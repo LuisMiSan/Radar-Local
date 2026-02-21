@@ -1,0 +1,8 @@
+{
+  "name": "Radar Local",
+  "description": "AI-powered Local SEO and GEO (Generative Engine Optimization) audit platform.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}
