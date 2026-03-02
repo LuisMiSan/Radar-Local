@@ -3,53 +3,60 @@ import { GoogleGenAI } from "@google/genai";
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const models = {
-  flash: "gemini-2.5-flash-latest",
+  flash: "gemini-3.1-pro-preview",
   pro: "gemini-3.1-pro-preview",
   tts: "gemini-2.5-flash-preview-tts",
   audio: "gemini-2.5-flash-native-audio-preview-12-2025",
 };
 
-export async function analyzeContent(url: string, type: 'seo' | 'geo' | 'full') {
+export async function analyzeContent(url: string, type: 'seo' | 'geo' | 'full', language: 'es' | 'en' = 'es') {
   const prompt = `
-    You are 'Radar Local AI', an expert auditor in traditional Local SEO and the new GEO (Generative Engine Optimization).
-    
-    I am providing you with a URL to analyze: ${url}
+    You are 'Radar Local AI', an elite auditor specializing in Local SEO and Generative Engine Optimization (GEO). Your goal is to generate a high-stakes, irresistible audit that convinces a business owner they are losing money by ignoring AI.
 
-    Your task is to analyze this entity and return a structured diagnosis.
+    I am providing you with a URL or Business Name to analyze: ${url}
     
-    1. **Review & Rating Verification**: Search for the business on Google Maps/Search. Identify their average rating and total number of reviews. Explain the impact of these metrics on their local visibility and trust.
-    2. **Web Content Audit**: Analyze the main heading (H1) and listed services on the landing page. Check for relevance and local SEO optimization. Provide specific suggestions.
-    3. **Schema Markup Analysis**: Detect if JSON-LD structured data is present. Identify the types (e.g., LocalBusiness, MedicalBusiness). Explain why this is crucial for AI understanding.
+    IMPORTANT: The entire JSON content MUST be in ${language === 'es' ? 'SPANISH' : 'ENGLISH'}.
 
-    Return the response in JSON format with the following structure:
+    Your task is to analyze this business entity specifically for its visibility in the AI Era (Google Maps, Gemini, ChatGPT, Voice Search).
+    
+    Analyze the following deep metrics:
+    1. **Entity Clarity & Knowledge Graph**: Does AI know *exactly* what this business is? Or is it confused?
+    2. **Review Sentiment for AI**: AI recommends "trusted" businesses. Analyze sentiment depth, not just star rating.
+    3. **Voice Search Readiness**: If someone asks Siri/Gemini "Best [service] near me", will this business appear?
+    4. **Visual Appeal (Inferred)**: Do they have high-quality images that AI can "see" and describe?
+    5. **Competitor Gap**: Who is winning in this niche and why?
+
+    Return the response in this STRICT JSON format:
     {
-      "seo_diagnosis": {
+      "gemini_maps_diagnosis": {
         "score": number (0-100),
-        "issues": string[],
-        "strengths": string[],
-        "reviews": {
-          "rating": number (e.g. 4.5, or 0 if not found),
-          "count": number (e.g. 120, or 0 if not found),
-          "impact_analysis": string (Explanation of impact)
+        "entity_clarity": string ("High", "Moderate", "Low"),
+        "entity_clarity_reason": string (Detailed technical reason),
+        "sentiment_analysis": {
+          "score": number (0-100),
+          "summary": string (Punchy summary of reputation),
+          "keywords": string[] (5-7 key themes)
         },
-        "content_audit": {
-          "h1": string (The main H1 detected),
-          "services_found": string[] (List of services detected),
-          "suggestions": string[] (Suggestions for improvement)
+        "voice_search_readiness": {
+          "score": number (0-100),
+          "status": string (e.g., "Invisible", "Optimized", "Needs Work"),
+          "reason": string
+        },
+        "competitor_gap": {
+          "main_competitor": string (Name of a likely top competitor),
+          "why_they_win": string (What they are doing better)
+        },
+        "missing_data_points": string[] (Critical missing info like 'Menu', 'Services', 'Attributes'),
+        "ai_recommendation_likelihood": string ("High", "Low", "Critical"),
+        "improvement_plan": {
+          "immediate_actions": string[] (3 "Quick Wins" to do TODAY),
+          "long_term_strategy": string[] (3 Strategic moves for dominance)
         }
       },
-      "geo_diagnosis": {
-        "score": number (0-100),
-        "schema_detected": boolean,
-        "schema_types": string[] (List of schema types found, e.g. ["LocalBusiness"]),
-        "schema_analysis": string (Explanation of importance and status),
-        "entity_clarity": string,
-        "missing_data": string[]
-      },
-      "sales_pitch": {
-        "package_1_seo": string,
-        "package_2_geo": string,
-        "package_3_bundle": string
+      "lead_magnet_hook": {
+        "headline": string (Shocking/Urgent headline about lost revenue),
+        "subheadline": string (Data-backed reason they need to act now),
+        "estimated_lost_revenue": string (e.g., "$5,000/month")
       }
     }
   `;
@@ -58,12 +65,21 @@ export async function analyzeContent(url: string, type: 'seo' | 'geo' | 'full') 
     model: models.flash,
     contents: prompt,
     config: {
-      responseMimeType: "application/json",
-      tools: [{ googleSearch: {} }, { googleMaps: {} }],
+      tools: [{ googleSearch: {} }],
     },
   });
 
-  return JSON.parse(response.text || "{}");
+  const text = response.text || "{}";
+  // Extract JSON from Markdown code block if present
+  const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/```\n([\s\S]*?)\n```/);
+  const jsonString = jsonMatch ? jsonMatch[1] : text;
+
+  try {
+    return JSON.parse(jsonString);
+  } catch (e) {
+    console.error("Failed to parse JSON response:", e);
+    return {};
+  }
 }
 
 export async function generateTTS(text: string) {

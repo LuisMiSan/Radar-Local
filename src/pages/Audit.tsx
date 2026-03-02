@@ -1,73 +1,81 @@
 import { useState } from "react";
 import { 
-  Globe, 
-  FileText, 
-  Activity, 
   Search, 
-  ArrowRight, 
   Loader2,
   CheckCircle2,
   AlertCircle,
+  MapPin,
   MessageSquare,
-  Volume2,
-  Download,
-  Copy,
-  Star,
-  Code,
-  LayoutTemplate
+  BarChart3,
+  ArrowRight,
+  Save,
+  Mic,
+  Trophy,
+  Zap,
+  Target,
+  Download
 } from "lucide-react";
 import { clsx } from "clsx";
-import { analyzeContent, generateTTS } from "../services/gemini";
-import ReactMarkdown from "react-markdown";
-import { Chatbot } from "../components/Chatbot";
+import { analyzeContent } from "../services/gemini";
+import { useLanguage } from "../context/LanguageContext";
+import { useNavigate } from "react-router-dom";
+import { generatePDF } from "../utils/pdfGenerator";
 
 export function Audit() {
-  const [activeTab, setActiveTab] = useState("url");
+  const { t, language } = useLanguage();
+  const navigate = useNavigate();
   const [url, setUrl] = useState("");
-  const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const handleAnalyze = async () => {
     setLoading(true);
     setResult(null);
-    setAudioUrl(null);
     try {
-      const data = await analyzeContent(activeTab === "url" ? url : text, "full");
+      const data = await analyzeContent(url, "geo", language);
       setResult(data);
     } catch (error) {
       console.error("Analysis failed:", error);
-      // Mock result for demo if API fails or for testing UI
+      // Mock result for demo if API fails
       setResult({
-        seo_diagnosis: {
-          score: 78,
-          issues: ["Missing meta descriptions", "Slow load time"],
-          strengths: ["Good mobile responsiveness"],
-          reviews: {
-            rating: 4.2,
-            count: 128,
-            impact_analysis: "A rating of 4.2 is good but falls below the 4.5 threshold often preferred by users. 128 reviews show established presence."
+        gemini_maps_diagnosis: {
+          score: 45,
+          entity_clarity: "Baja",
+          entity_clarity_reason: "Gemini confunde este negocio con otro similar en la misma zona debido a la falta de datos estructurados únicos.",
+          sentiment_analysis: {
+            score: 60,
+            summary: "Los clientes mencionan buen servicio pero se quejan de horarios incorrectos en mapas.",
+            keywords: ["horario", "servicio", "ubicación"]
           },
-          content_audit: {
-            h1: "Best Medical Clinic in Madrid",
-            services_found: ["General Medicine", "Pediatrics", "Dermatology"],
-            suggestions: ["Include city name in H1 more naturally", "Add individual service pages"]
+          voice_search_readiness: {
+            score: 30,
+            status: "Invisible",
+            reason: "Falta de palabras clave conversacionales y preguntas frecuentes."
+          },
+          competitor_gap: {
+            main_competitor: "Competidor Local X",
+            why_they_win: "Tienen más reseñas recientes y fotos de alta calidad."
+          },
+          missing_data_points: ["Horarios festivos", "Atributos de accesibilidad", "Menú de servicios detallado"],
+          ai_recommendation_likelihood: "Baja",
+          improvement_plan: {
+            immediate_actions: [
+              "Reclamar y verificar perfil de Google Business",
+              "Añadir marcado Schema LocalBusiness",
+              "Responder a reseñas recientes"
+            ],
+            long_term_strategy: [
+              "Estrategia de generación de reseñas",
+              "Optimización de imágenes para IA",
+              "Creación de contenido de preguntas frecuentes"
+            ]
           }
         },
-        geo_diagnosis: {
-          score: 65,
-          schema_detected: false,
-          schema_types: [],
-          schema_analysis: "No JSON-LD schema detected. This severely limits AI understanding of your business details.",
-          entity_clarity: "Moderate",
-          missing_data: ["Service hours", "Price range"]
-        },
-        sales_pitch: {
-          package_1_seo: "Fix your technical SEO foundation to boost visibility.",
-          package_2_geo: "Implement structured data to rank in AI answers.",
-          package_3_bundle: "Complete dominance: SEO + GEO optimization."
+        lead_magnet_hook: {
+          headline: "Estás perdiendo clientes que buscan en IA",
+          subheadline: "Tu competencia aparece primero cuando los usuarios preguntan a Gemini por tus servicios.",
+          estimated_lost_revenue: "$2,000/mes"
         }
       });
     } finally {
@@ -75,358 +83,270 @@ export function Audit() {
     }
   };
 
-  const handleTTS = async () => {
-    if (!result) return;
-    
-    if (audioUrl) {
-      const audio = new Audio(audioUrl);
-      audio.play();
-      setPlaying(true);
-      audio.onended = () => setPlaying(false);
-      return;
-    }
+  const handleSaveLead = () => {
+    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+    leads.push({
+      id: Date.now(),
+      business: url,
+      score: result?.gemini_maps_diagnosis?.score || 0,
+      status: 'New',
+      date: new Date().toISOString(),
+      report: result // Save the full report here
+    });
+    localStorage.setItem('leads', JSON.stringify(leads));
+    navigate('/');
+  };
 
-    try {
-      const textToRead = `Here is your audit report. Your SEO score is ${result.seo_diagnosis.score} and your GEO score is ${result.geo_diagnosis.score}. ${result.sales_pitch.package_3_bundle}`;
-      const base64 = await generateTTS(textToRead);
-      if (base64) {
-        const url = `data:audio/mp3;base64,${base64}`;
-        setAudioUrl(url);
-        const audio = new Audio(url);
-        audio.play();
-        setPlaying(true);
-        audio.onended = () => setPlaying(false);
-      }
-    } catch (error) {
-      console.error("TTS failed:", error);
-    }
+  const handleDownloadPDF = async () => {
+    setGeneratingPdf(true);
+    await generatePDF('audit-report', `audit-report-${url.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`);
+    setGeneratingPdf(false);
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900">New Audit</h1>
-        <p className="text-slate-500">Analyze your content for SEO and GEO optimization</p>
+    <div className="max-w-5xl mx-auto space-y-8 pb-12">
+      <div className="text-center space-y-4">
+        <div className="inline-flex items-center justify-center p-3 bg-blue-50 rounded-full mb-4">
+          <MapPin className="text-blue-600 w-8 h-8" />
+        </div>
+        <h1 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">
+          {language === 'es' ? 'Auditoría de Posicionamiento en Gemini Maps' : 'Gemini Maps Positioning Audit'}
+        </h1>
+        <p className="text-xl text-slate-500 max-w-2xl mx-auto">
+          {language === 'es' 
+            ? 'Descubre cómo te ve la Inteligencia Artificial y por qué no apareces en las respuestas de Gemini.' 
+            : 'Discover how AI sees you and why you are not appearing in Gemini answers.'}
+        </p>
       </div>
 
       {/* Input Section */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="flex border-b border-slate-100">
-          <button
-            onClick={() => setActiveTab("url")}
-            className={clsx(
-              "flex-1 py-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors",
-              activeTab === "url" ? "bg-slate-50 text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            <Globe size={18} /> Analyze URL
-          </button>
-          <button
-            onClick={() => setActiveTab("text")}
-            className={clsx(
-              "flex-1 py-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors",
-              activeTab === "text" ? "bg-slate-50 text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            <FileText size={18} /> Paste Text
-          </button>
-          <button
-            onClick={() => setActiveTab("site")}
-            className={clsx(
-              "flex-1 py-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors",
-              activeTab === "site" ? "bg-slate-50 text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            <Activity size={18} /> Site Audit
-          </button>
-        </div>
-
-        <div className="p-8">
-          {activeTab === "url" && (
-            <div className="flex gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                <input
-                  type="url"
-                  placeholder="https://example.com"
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                />
-              </div>
-              <button
-                onClick={handleAnalyze}
-                disabled={loading || !url}
-                className="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-              >
-                {loading ? <Loader2 className="animate-spin" size={20} /> : <ZapIcon />}
-                {loading ? "Analyzing..." : "Analyze"}
-              </button>
-            </div>
-          )}
-          
-          {activeTab === "text" && (
-            <div className="space-y-4">
-              <textarea
-                placeholder="Paste your content here..."
-                className="w-full p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px]"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-              />
-              <div className="flex justify-end">
-                <button
-                  onClick={handleAnalyze}
-                  disabled={loading || !text}
-                  className="px-8 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                >
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : <ZapIcon />}
-                  {loading ? "Analyzing..." : "Analyze"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-2 pl-6 flex items-center gap-4 transition-all focus-within:ring-4 focus-within:ring-blue-500/10">
+        <Search className="text-slate-400 shrink-0" size={24} />
+        <input
+          type="text"
+          placeholder={language === 'es' ? "Nombre del negocio o URL de Google Maps..." : "Business Name or Google Maps URL..."}
+          className="flex-1 py-4 text-lg bg-transparent focus:outline-none placeholder:text-slate-400"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+        />
+        <button
+          onClick={handleAnalyze}
+          disabled={loading || !url}
+          className="px-8 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+        >
+          {loading ? <Loader2 className="animate-spin" size={20} /> : <span className="flex items-center gap-2">{language === 'es' ? 'Auditar Gratis' : 'Audit for Free'} <ArrowRight size={18} /></span>}
+        </button>
       </div>
 
       {/* Results Section */}
       {result && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
           
-          {/* Scores */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ScoreCard 
-              title="SEO Score" 
-              score={result.seo_diagnosis.score} 
-              description="Traditional Search Engine Optimization"
-              color="blue"
-            />
-            <ScoreCard 
-              title="GEO Score" 
-              score={result.geo_diagnosis.score} 
-              description="Generative Engine Optimization (AI)"
-              color="purple"
-            />
+          <div className="flex justify-end">
+            <button 
+              onClick={handleDownloadPDF}
+              disabled={generatingPdf}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
+            >
+              {generatingPdf ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
+              {language === 'es' ? 'Descargar Informe PDF' : 'Download PDF Report'}
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              
-              {/* Reviews & Ratings */}
-              {result.seo_diagnosis.reviews && (
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <Star className="text-yellow-500" size={20} />
-                    Reviews & Reputation
-                  </h3>
-                  <div className="flex items-center gap-6 mb-4">
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-slate-900">{result.seo_diagnosis.reviews.rating || "N/A"}</div>
-                      <div className="text-xs text-slate-500">Average Rating</div>
-                    </div>
-                    <div className="h-10 w-px bg-slate-200"></div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-slate-900">{result.seo_diagnosis.reviews.count || "0"}</div>
-                      <div className="text-xs text-slate-500">Total Reviews</div>
-                    </div>
+          <div id="audit-report" className="space-y-8 p-4 bg-slate-50/50 rounded-3xl">
+            {/* Hook Header */}
+            <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+              <div className="relative z-10">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-bold mb-2 text-red-400">{result.lead_magnet_hook.headline}</h2>
+                    <p className="text-blue-100 text-lg max-w-2xl">{result.lead_magnet_hook.subheadline}</p>
                   </div>
-                  <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl">
-                    {result.seo_diagnosis.reviews.impact_analysis}
+                  <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10 text-center min-w-[150px]">
+                    <div className="text-sm text-white/70 uppercase tracking-wider font-semibold mb-1">
+                      {language === 'es' ? 'Pérdida Est.' : 'Est. Loss'}
+                    </div>
+                    <div className="text-2xl font-bold text-red-400">{result.lead_magnet_hook.estimated_lost_revenue}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Main Score */}
+              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center col-span-1">
+                <div className="relative w-48 h-48 mb-6">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="96" cy="96" r="88" stroke="#f1f5f9" strokeWidth="16" fill="transparent" />
+                    <circle
+                      cx="96" cy="96" r="88"
+                      stroke={result.gemini_maps_diagnosis.score > 70 ? "#22c55e" : result.gemini_maps_diagnosis.score > 40 ? "#eab308" : "#ef4444"}
+                      strokeWidth="16"
+                      fill="transparent"
+                      strokeDasharray={552.9}
+                      strokeDashoffset={552.9 - (552.9 * result.gemini_maps_diagnosis.score) / 100}
+                      className="transition-all duration-1000 ease-out"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-6xl font-black text-slate-900">{result.gemini_maps_diagnosis.score}</span>
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-wider mt-2">Gemini Score</span>
+                  </div>
+                </div>
+                <div className="space-y-2 w-full">
+                  <div className="text-sm font-medium text-slate-500">{language === 'es' ? 'Probabilidad de Recomendación' : 'Recommendation Likelihood'}</div>
+                  <div className={clsx(
+                    "text-xl font-bold py-2 px-4 rounded-xl w-full",
+                    result.gemini_maps_diagnosis.ai_recommendation_likelihood === "High" || result.gemini_maps_diagnosis.ai_recommendation_likelihood === "Alta" 
+                      ? "bg-green-50 text-green-700" 
+                      : "bg-red-50 text-red-700"
+                  )}>
+                    {result.gemini_maps_diagnosis.ai_recommendation_likelihood}
+                  </div>
+                </div>
+              </div>
+
+              {/* Deep Analysis Grid */}
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Entity Clarity */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-purple-50 rounded-lg">
+                      <MapPin className="text-purple-600" size={18} />
+                    </div>
+                    <h3 className="font-bold text-slate-900">{language === 'es' ? 'Claridad de Entidad' : 'Entity Clarity'}</h3>
+                  </div>
+                  <div className="mb-2">
+                    <span className={clsx(
+                      "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide",
+                      result.gemini_maps_diagnosis.entity_clarity === "High" || result.gemini_maps_diagnosis.entity_clarity === "Alta" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    )}>
+                      {result.gemini_maps_diagnosis.entity_clarity}
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-sm leading-relaxed">
+                    {result.gemini_maps_diagnosis.entity_clarity_reason}
                   </p>
                 </div>
-              )}
 
-              {/* Content Audit */}
-              {result.seo_diagnosis.content_audit && (
+                {/* Voice Search */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <LayoutTemplate className="text-blue-500" size={20} />
-                    Content Audit
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <span className="text-xs font-bold text-slate-500 uppercase">Main Heading (H1)</span>
-                      <p className="font-medium text-slate-900 mt-1 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        {result.seo_diagnosis.content_audit.h1 || "No H1 detected"}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-indigo-50 rounded-lg">
+                      <Mic className="text-indigo-600" size={18} />
+                    </div>
+                    <h3 className="font-bold text-slate-900">{language === 'es' ? 'Búsqueda por Voz' : 'Voice Search'}</h3>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                     <div className="font-bold text-2xl text-slate-900">{result.gemini_maps_diagnosis.voice_search_readiness?.score || 0}%</div>
+                     <span className="text-xs text-slate-400 font-medium uppercase">{result.gemini_maps_diagnosis.voice_search_readiness?.status}</span>
+                  </div>
+                  <p className="text-slate-600 text-sm leading-relaxed">
+                    {result.gemini_maps_diagnosis.voice_search_readiness?.reason}
+                  </p>
+                </div>
+
+                {/* Competitor Gap */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 sm:col-span-2">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-orange-50 rounded-lg">
+                      <Trophy className="text-orange-600" size={18} />
+                    </div>
+                    <h3 className="font-bold text-slate-900">{language === 'es' ? 'Análisis de Competencia' : 'Competitor Analysis'}</h3>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1 bg-orange-50/50 p-3 rounded-xl border border-orange-100">
+                      <div className="text-xs text-orange-600 font-bold uppercase mb-1">{language === 'es' ? 'Competidor Principal' : 'Top Competitor'}</div>
+                      <div className="font-bold text-slate-900">{result.gemini_maps_diagnosis.competitor_gap?.main_competitor}</div>
+                    </div>
+                    <div className="flex-[2]">
+                      <p className="text-slate-600 text-sm leading-relaxed">
+                        <span className="font-semibold text-slate-900">{language === 'es' ? 'Por qué ganan: ' : 'Why they win: '}</span>
+                        {result.gemini_maps_diagnosis.competitor_gap?.why_they_win}
                       </p>
                     </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-500 uppercase">Detected Services</span>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {result.seo_diagnosis.content_audit.services_found?.map((service: string, i: number) => (
-                          <span key={i} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
-                            {service}
-                          </span>
-                        )) || <span className="text-sm text-slate-500">No services detected</span>}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-500 uppercase">Suggestions</span>
-                      <ul className="mt-2 space-y-2">
-                        {result.seo_diagnosis.content_audit.suggestions?.map((suggestion: string, i: number) => (
-                          <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
-                            <span className="text-blue-500 mt-1">•</span> {suggestion}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
                   </div>
-                </div>
-              )}
-
-              {/* Schema Analysis */}
-              {result.geo_diagnosis && (
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <Code className="text-purple-500" size={20} />
-                    Schema Markup Analysis
-                  </h3>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={clsx(
-                      "px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2",
-                      result.geo_diagnosis.schema_detected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                    )}>
-                      {result.geo_diagnosis.schema_detected ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                      {result.geo_diagnosis.schema_detected ? "Schema Detected" : "No Schema Detected"}
-                    </div>
-                    {result.geo_diagnosis.schema_types?.map((type: string, i: number) => (
-                      <span key={i} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm">
-                        {type}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl">
-                    {result.geo_diagnosis.schema_analysis}
-                  </p>
-                </div>
-              )}
-
-              {/* Issues & Opportunities */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  <AlertCircle className="text-orange-500" size={20} />
-                  Issues & Opportunities
-                </h3>
-                <div className="space-y-4">
-                  {result.seo_diagnosis.issues.map((issue: string, i: number) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-red-50 rounded-lg text-red-700 text-sm">
-                      <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                      {issue}
-                    </div>
-                  ))}
-                  {result.geo_diagnosis.missing_data.map((item: string, i: number) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg text-purple-700 text-sm">
-                      <Activity size={16} className="mt-0.5 shrink-0" />
-                      Missing for AI: {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  <CheckCircle2 className="text-green-500" size={20} />
-                  Strengths
-                </h3>
-                <div className="space-y-4">
-                  {result.seo_diagnosis.strengths.map((strength: string, i: number) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-green-50 rounded-lg text-green-700 text-sm">
-                      <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
-                      {strength}
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6">
-              {/* Actions */}
-              <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-lg sticky top-6">
-                <h3 className="text-lg font-bold mb-4">Recommended Actions</h3>
-                <div className="space-y-4">
-                  <div className="p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-                    <div className="text-xs text-blue-300 uppercase font-bold mb-1">SEO Package</div>
-                    <p className="text-sm">{result.sales_pitch.package_1_seo}</p>
-                  </div>
-                  <div className="p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-purple-500/50">
-                    <div className="text-xs text-purple-300 uppercase font-bold mb-1">GEO Package (AI-Ready)</div>
-                    <p className="text-sm">{result.sales_pitch.package_2_geo}</p>
-                  </div>
-                </div>
-                <button className="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium transition-colors">
-                  Generate Proposal
-                </button>
+            {/* Action Plan */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+                <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                  <Zap className="text-yellow-500" />
+                  {language === 'es' ? 'Victorias Rápidas (Hoy)' : 'Quick Wins (Today)'}
+                </h3>
+                <ul className="space-y-4">
+                  {result.gemini_maps_diagnosis.improvement_plan?.immediate_actions?.map((action: string, i: number) => (
+                    <li key={i} className="flex items-start gap-3 text-slate-600">
+                      <div className="w-6 h-6 rounded-full bg-yellow-100 text-yellow-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                        {i + 1}
+                      </div>
+                      <span>{action}</span>
+                    </li>
+                  ))}
+                </ul>
+                
+                <h3 className="text-lg font-bold text-slate-900 mt-8 mb-6 flex items-center gap-2">
+                  <Target className="text-blue-500" />
+                  {language === 'es' ? 'Estrategia a Largo Plazo' : 'Long-term Strategy'}
+                </h3>
+                <ul className="space-y-4">
+                  {result.gemini_maps_diagnosis.improvement_plan?.long_term_strategy?.map((action: string, i: number) => (
+                    <li key={i} className="flex items-start gap-3 text-slate-600">
+                      <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                        {i + 1}
+                      </div>
+                      <span>{action}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              {/* Tools */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-3">
+              <div data-html2canvas-ignore className="bg-blue-600 rounded-3xl p-8 text-white shadow-lg flex flex-col justify-between relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <div className="relative z-10">
+                  <h3 className="text-2xl font-bold mb-2">
+                    {language === 'es' ? '¿Quieres el Informe Completo?' : 'Want the Full Report?'}
+                  </h3>
+                  <p className="text-blue-100 mb-8">
+                    {language === 'es' 
+                      ? 'Guarda este lead para acceder al plan de implementación detallado y comenzar a captar clientes con IA.' 
+                      : 'Save this lead to access the detailed implementation plan and start capturing customers with AI.'}
+                  </p>
+                  
+                  <div className="bg-white/10 rounded-xl p-4 mb-8 border border-white/10">
+                    <div className="flex items-center gap-3 mb-2">
+                      <AlertCircle className="text-yellow-300" size={20} />
+                      <span className="font-bold text-white">{language === 'es' ? 'Datos Faltantes Críticos' : 'Critical Missing Data'}</span>
+                    </div>
+                    <ul className="space-y-1 ml-8">
+                      {result.gemini_maps_diagnosis.missing_data_points?.slice(0, 3).map((point: string, i: number) => (
+                        <li key={i} className="text-sm text-blue-100 list-disc">
+                          {point}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                
                 <button 
-                  onClick={handleTTS}
-                  className="w-full py-3 px-4 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-700 font-medium transition-colors flex items-center justify-center gap-2"
+                  onClick={handleSaveLead}
+                  className="w-full py-4 bg-white text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 shadow-lg relative z-10"
                 >
-                  {playing ? <Volume2 className="animate-pulse text-blue-600" /> : <Volume2 />}
-                  {playing ? "Playing Report..." : "Listen to Report"}
-                </button>
-                <button className="w-full py-3 px-4 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-700 font-medium transition-colors flex items-center justify-center gap-2">
-                  <Download size={20} />
-                  Export PDF
+                  <Save size={20} />
+                  {language === 'es' ? 'Guardar Lead en Pipeline' : 'Save Lead to Pipeline'}
                 </button>
               </div>
             </div>
           </div>
+
         </div>
       )}
-      <Chatbot contextData={result} />
-    </div>
-  );
-}
-
-function ZapIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-    </svg>
-  );
-}
-
-function ScoreCard({ title, score, description, color }: any) {
-  const colors = {
-    blue: "text-blue-600",
-    purple: "text-purple-600",
-  };
-  
-  return (
-    <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex items-center justify-between">
-      <div>
-        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
-        <p className="text-slate-500 text-sm mt-1 max-w-[200px]">{description}</p>
-      </div>
-      <div className="relative w-24 h-24 flex items-center justify-center">
-        <svg className="w-full h-full transform -rotate-90">
-          <circle
-            cx="48"
-            cy="48"
-            r="40"
-            stroke="currentColor"
-            strokeWidth="8"
-            fill="transparent"
-            className="text-slate-100"
-          />
-          <circle
-            cx="48"
-            cy="48"
-            r="40"
-            stroke="currentColor"
-            strokeWidth="8"
-            fill="transparent"
-            strokeDasharray={251.2}
-            strokeDashoffset={251.2 - (251.2 * score) / 100}
-            className={`${colors[color as keyof typeof colors]} transition-all duration-1000 ease-out`}
-          />
-        </svg>
-        <span className={`absolute text-2xl font-bold ${colors[color as keyof typeof colors]}`}>
-          {score}%
-        </span>
-      </div>
     </div>
   );
 }

@@ -7,19 +7,20 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { Audit } from "./pages/Audit";
-import { Reports } from "./pages/Reports";
+import { LanguageProvider } from "./context/LanguageContext";
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="audit" element={<Audit />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="*" element={<Dashboard />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="audit" element={<Audit />} />
+            <Route path="*" element={<Dashboard />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </LanguageProvider>
   );
 }
