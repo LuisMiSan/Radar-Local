@@ -11,52 +11,56 @@ export const models = {
 
 export async function analyzeContent(url: string, type: 'seo' | 'geo' | 'full', language: 'es' | 'en' = 'es') {
   const prompt = `
-    You are 'Radar Local AI', an elite auditor specializing in Local SEO and Generative Engine Optimization (GEO). Your goal is to generate a high-stakes, irresistible audit that convinces a business owner they are losing money by ignoring AI.
-
+    You are 'Radar Local AI', a business consultant who explains complex digital problems in simple, money-focused terms to business owners.
+    
     I am providing you with a URL or Business Name to analyze: ${url}
     
     IMPORTANT: The entire JSON content MUST be in ${language === 'es' ? 'SPANISH' : 'ENGLISH'}.
-
-    Your task is to analyze this business entity specifically for its visibility in the AI Era (Google Maps, Gemini, ChatGPT, Voice Search).
     
-    Analyze the following deep metrics:
-    1. **Entity Clarity & Knowledge Graph**: Does AI know *exactly* what this business is? Or is it confused?
-    2. **Review Sentiment for AI**: AI recommends "trusted" businesses. Analyze sentiment depth, not just star rating.
-    3. **Voice Search Readiness**: If someone asks Siri/Gemini "Best [service] near me", will this business appear?
-    4. **Visual Appeal (Inferred)**: Do they have high-quality images that AI can "see" and describe?
-    5. **Competitor Gap**: Who is winning in this niche and why?
-
+    Your goal is to tell the business owner WHY they are losing customers to competitors in the AI Era (Google Maps, Siri, ChatGPT).
+    
+    CRITICAL INSTRUCTIONS:
+    1. **NO TECHNICAL JARGON**: Do NOT use words like "JSON-LD", "Schema", "Knowledge Graph", "Crawlers", "Algorithms", "Backlinks".
+    2. **FOCUS ON BUSINESS VALUE**: Talk about "Customers", "Calls", "Reservations", "Visibility", "Reputation".
+    3. **BE DIRECT & URGENT**: Explain that if AI can't "see" them, customers can't find them.
+    
+    Analyze the following:
+    1. **Clarity**: Is it clear what they sell? (e.g., "AI is confused if you are a gym or a cafe").
+    2. **Reputation**: Do people trust them? (e.g., "Customers love your service but complain about wait times").
+    3. **Voice Search**: If I ask Siri, do they show up? (e.g., "Invisible to voice search").
+    4. **Competitors**: Who is stealing their customers and why? (e.g., "Competitor X has better photos and more recent reviews").
+    
     Return the response in this STRICT JSON format:
     {
       "gemini_maps_diagnosis": {
         "score": number (0-100),
         "entity_clarity": string ("High", "Moderate", "Low"),
-        "entity_clarity_reason": string (Detailed technical reason),
+        "entity_clarity_reason": string (Simple explanation: "Google doesn't know your opening hours" or "Your menu is hard to read for AI"),
         "sentiment_analysis": {
           "score": number (0-100),
-          "summary": string (Punchy summary of reputation),
-          "keywords": string[] (5-7 key themes)
+          "summary": string (What customers are actually saying in plain language),
+          "keywords": string[] (5-7 simple themes like "Price", "Service", "Location")
         },
         "voice_search_readiness": {
           "score": number (0-100),
-          "status": string (e.g., "Invisible", "Optimized", "Needs Work"),
-          "reason": string
+          "status": string (e.g., "Invisible", "Visible", "Dominant"),
+          "reason": string (e.g., "Siri can't find your phone number" or "Alexa doesn't know your menu")
         },
         "competitor_gap": {
           "main_competitor": string (Name of a likely top competitor),
-          "why_they_win": string (What they are doing better)
+          "why_they_win": string (Simple reason: "They have 50 more photos" or "They reply to every review")
         },
-        "missing_data_points": string[] (Critical missing info like 'Menu', 'Services', 'Attributes'),
+        "missing_data_points": string[] (Critical missing info: 'Menu Photos', 'Holiday Hours', 'Wheelchair Access'),
         "ai_recommendation_likelihood": string ("High", "Low", "Critical"),
         "improvement_plan": {
-          "immediate_actions": string[] (3 "Quick Wins" to do TODAY),
-          "long_term_strategy": string[] (3 Strategic moves for dominance)
+          "immediate_actions": string[] (3 Simple tasks: "Upload 5 photos of food", "Reply to last 3 reviews", "Update Sunday hours"),
+          "long_term_strategy": string[] (3 Business goals: "Get 10 reviews this month", "Post weekly updates", "Add a Q&A section")
         }
       },
       "lead_magnet_hook": {
-        "headline": string (Shocking/Urgent headline about lost revenue),
-        "subheadline": string (Data-backed reason they need to act now),
-        "estimated_lost_revenue": string (e.g., "$5,000/month")
+        "headline": string (Shocking/Urgent headline about lost customers),
+        "subheadline": string (Simple reason they need to act now),
+        "estimated_lost_revenue": string (e.g., "$2,000/month")
       }
     }
   `;

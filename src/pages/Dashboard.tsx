@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { generateEntityProfileMarkdown } from "../utils/markdownGenerator";
 import { 
   Search, 
   MapPin,
@@ -6,14 +7,23 @@ import {
   Filter,
   X,
   LayoutGrid,
-  Kanban,
+  Table as TableIcon,
   Loader2,
   Download,
   AlertCircle,
   Mic,
   Trophy,
   Zap,
-  Target
+  Target,
+  Calendar,
+  MoreHorizontal,
+  Plus,
+  Eye,
+  Trash2,
+  ChevronDown,
+  Code,
+  Copy,
+  FileText
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
@@ -30,9 +40,11 @@ export function Dashboard() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [leadToUpdate, setLeadToUpdate] = useState<Lead | null>(null);
+  const [leadToDelete, setLeadToDelete] = useState<number | null>(null);
   const [newScore, setNewScore] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<'grid' | 'pipeline'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   useEffect(() => {
     const storedLeads = JSON.parse(localStorage.getItem('leads') || '[]');
@@ -61,12 +73,20 @@ export function Dashboard() {
     localStorage.setItem('leads', JSON.stringify(updatedLeads));
   };
 
-  const deleteLead = (id: number) => {
-    if (window.confirm(language === 'es' ? '¿Estás seguro de que quieres eliminar este lead?' : 'Are you sure you want to delete this lead?')) {
-      const updatedLeads = leads.filter(lead => String(lead.id) !== String(id));
-      setLeads(updatedLeads);
-      localStorage.setItem('leads', JSON.stringify(updatedLeads));
-    }
+  const confirmDelete = (id: number) => {
+    setLeadToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const executeDelete = () => {
+    if (leadToDelete === null) return;
+    
+    const updatedLeads = leads.filter(lead => String(lead.id) !== String(leadToDelete));
+    setLeads(updatedLeads);
+    localStorage.setItem('leads', JSON.stringify(updatedLeads));
+    
+    setIsDeleteModalOpen(false);
+    setLeadToDelete(null);
   };
 
   const handleUpdateMetrics = (lead: Lead) => {
@@ -97,24 +117,6 @@ export function Dashboard() {
     localStorage.setItem('leads', JSON.stringify(updatedLeads));
     setIsUpdateModalOpen(false);
     setLeadToUpdate(null);
-  };
-
-  const handleDragStart = (e: React.DragEvent, id: number) => {
-    e.dataTransfer.setData('leadId', String(id));
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, status: string) => {
-    e.preventDefault();
-    const leadId = e.dataTransfer.getData('leadId');
-    if (leadId) {
-      updateStatus(Number(leadId), status);
-    }
   };
 
   const filteredLeads = leads.filter(lead => 
@@ -202,14 +204,14 @@ export function Dashboard() {
             {language === 'es' ? 'Cuadrícula' : 'Grid'}
           </button>
           <button 
-            onClick={() => setViewMode('pipeline')}
+            onClick={() => setViewMode('table')}
             className={clsx(
               "p-2 rounded-md transition-all flex items-center gap-2 text-sm font-medium",
-              viewMode === 'pipeline' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              viewMode === 'table' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
             )}
           >
-            <Kanban size={18} />
-            {language === 'es' ? 'Pipeline' : 'Pipeline'}
+            <TableIcon size={18} />
+            {language === 'es' ? 'Tabla' : 'Table'}
           </button>
         </div>
       </div>
@@ -226,7 +228,7 @@ export function Dashboard() {
                 onUpdateStatus={updateStatus}
                 onUpdateMetrics={handleUpdateMetrics}
                 onViewReport={setSelectedLead}
-                onDelete={deleteLead}
+                onDelete={confirmDelete}
               />
             ))
           ) : (
@@ -236,60 +238,105 @@ export function Dashboard() {
           )}
         </div>
       ) : (
-        /* Pipeline View */
-        <div className="flex gap-6 overflow-x-auto pb-6 -mx-4 px-4 md:mx-0 md:px-0">
-          {STATUSES.map(status => {
-            const statusLeads = filteredLeads.filter(l => l.status === status);
-            return (
-              <div 
-                key={status} 
-                className="min-w-[320px] flex-1 bg-slate-50/50 rounded-2xl border border-slate-100 flex flex-col max-h-[calc(100vh-300px)] transition-colors hover:bg-slate-100/50"
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, status)}
-              >
-                <div className="p-4 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-slate-50/95 backdrop-blur-sm rounded-t-2xl z-10 pointer-events-none">
-                  <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                    <div className={clsx(
-                      "w-3 h-3 rounded-full",
-                      status === 'New' ? "bg-blue-500" :
-                      status === 'Contacted' ? "bg-purple-500" :
-                      status === 'In Progress' ? "bg-yellow-500" :
-                      "bg-green-500"
-                    )} />
-                    {status}
-                  </h3>
-                  <span className="bg-white px-2.5 py-0.5 rounded-full text-xs font-bold text-slate-400 border border-slate-100">
-                    {statusLeads.length}
-                  </span>
-                </div>
-                <div className="p-4 overflow-y-auto flex-1 space-y-4">
-                  {statusLeads.length > 0 ? (
-                    statusLeads.map(lead => (
-                      <div
-                        key={lead.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, lead.id)}
-                        className="cursor-move active:cursor-grabbing transition-transform active:scale-[0.98]"
-                      >
-                        <LeadCard 
-                          lead={lead} 
-                          compact={true}
-                          onUpdateStatus={updateStatus}
-                          onUpdateMetrics={handleUpdateMetrics}
-                          onViewReport={setSelectedLead}
-                          onDelete={deleteLead}
-                        />
-                      </div>
-                    ))
-                  ) : (
-                    <div className="h-32 flex items-center justify-center text-slate-300 text-sm italic border-2 border-dashed border-slate-200 rounded-xl">
-                      {language === 'es' ? 'Vacío' : 'Empty'}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        /* Table View */
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{language === 'es' ? 'Negocio' : 'Business'}</th>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{language === 'es' ? 'Fecha' : 'Date'}</th>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Score</th>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{language === 'es' ? 'Estado' : 'Status'}</th>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{language === 'es' ? 'Acciones' : 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredLeads.length > 0 ? (
+                  filteredLeads.map((lead) => (
+                    <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="p-4">
+                        <div className="font-bold text-slate-900">{lead.business}</div>
+                      </td>
+                      <td className="p-4 text-slate-500 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={14} className="text-slate-400" />
+                          {new Date(lead.date).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className={clsx(
+                          "inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-sm font-bold",
+                          lead.score > 70 ? "bg-green-100 text-green-700" : 
+                          lead.score > 40 ? "bg-yellow-100 text-yellow-700" : 
+                          "bg-red-100 text-red-700"
+                        )}>
+                          {lead.score}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="relative inline-block">
+                          <select
+                            value={lead.status}
+                            onChange={(e) => updateStatus(lead.id, e.target.value)}
+                            className={clsx(
+                              "appearance-none pl-3 pr-8 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1",
+                              lead.status === 'New' ? "bg-blue-50 text-blue-700 border-blue-100 focus:ring-blue-500" :
+                              lead.status === 'Contacted' ? "bg-purple-50 text-purple-700 border-purple-100 focus:ring-purple-500" :
+                              lead.status === 'In Progress' ? "bg-yellow-50 text-yellow-700 border-yellow-100 focus:ring-yellow-500" :
+                              "bg-green-50 text-green-700 border-green-100 focus:ring-green-500"
+                            )}
+                          >
+                            {STATUSES.map(status => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
+                          </select>
+                          <ChevronDown size={12} className={clsx(
+                            "absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none",
+                            lead.status === 'New' ? "text-blue-700" :
+                            lead.status === 'Contacted' ? "text-purple-700" :
+                            lead.status === 'In Progress' ? "text-yellow-700" :
+                            "text-green-700"
+                          )} />
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => handleUpdateMetrics(lead)}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title={language === 'es' ? 'Actualizar Métricas' : 'Update Metrics'}
+                          >
+                            <Plus size={16} />
+                          </button>
+                          <button 
+                            onClick={() => setSelectedLead(lead)}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title={language === 'es' ? 'Ver Informe' : 'View Report'}
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button 
+                            onClick={() => confirmDelete(lead.id)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title={language === 'es' ? 'Eliminar' : 'Delete'}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="p-12 text-center text-slate-500 italic">
+                      {language === 'es' ? 'No hay leads para mostrar.' : 'No leads to display.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -341,6 +388,42 @@ export function Dashboard() {
                   {language === 'es' ? 'Guardar' : 'Save'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && leadToDelete !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
+                <AlertCircle size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
+                {language === 'es' ? '¿Eliminar Lead?' : 'Delete Lead?'}
+              </h3>
+              <p className="text-slate-500">
+                {language === 'es' 
+                  ? 'Esta acción no se puede deshacer. ¿Estás seguro de que quieres eliminar este lead permanentemente?' 
+                  : 'This action cannot be undone. Are you sure you want to permanently delete this lead?'}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="flex-1 py-2.5 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors"
+              >
+                {language === 'es' ? 'Cancelar' : 'Cancel'}
+              </button>
+              <button 
+                onClick={executeDelete}
+                className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+              >
+                {language === 'es' ? 'Eliminar' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>
@@ -470,6 +553,38 @@ export function Dashboard() {
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  </div>
+
+                  {/* Local Entity Profile (Markdown) */}
+                  <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 text-slate-300 shadow-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-500/10 rounded-lg">
+                          <FileText className="text-blue-400" size={20} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-white text-lg">
+                            {language === 'es' ? 'Perfil de Entidad Local' : 'Local Entity Profile'}
+                          </h3>
+                          <p className="text-xs text-slate-400">
+                            {language === 'es' ? 'Formato Markdown para entrega al cliente' : 'Markdown format for client delivery'}
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => navigator.clipboard.writeText(generateEntityProfileMarkdown(selectedLead))}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-blue-900/20"
+                      >
+                        <Copy size={14} />
+                        {language === 'es' ? 'Copiar Markdown' : 'Copy Markdown'}
+                      </button>
+                    </div>
+                    
+                    <div className="bg-black/50 rounded-xl p-6 overflow-x-auto border border-slate-800/50 relative group">
+                      <pre className="font-mono text-xs text-blue-300 leading-relaxed whitespace-pre-wrap">
+                        {generateEntityProfileMarkdown(selectedLead)}
+                      </pre>
                     </div>
                   </div>
                 </>

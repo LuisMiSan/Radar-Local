@@ -13,13 +13,17 @@ import {
   Trophy,
   Zap,
   Target,
-  Download
+  Download,
+  FileText,
+  Copy
 } from "lucide-react";
 import { clsx } from "clsx";
 import { analyzeContent } from "../services/gemini";
 import { useLanguage } from "../context/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { generatePDF } from "../utils/pdfGenerator";
+import { generateEntityProfileMarkdown } from "../utils/markdownGenerator";
+import { Lead } from "../components/LeadCard";
 
 export function Audit() {
   const { t, language } = useLanguage();
@@ -103,6 +107,8 @@ export function Audit() {
     setGeneratingPdf(false);
   };
 
+  const mockLeadForMarkdown = { business: url, report: result } as Lead;
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
       <div className="text-center space-y-4">
@@ -143,11 +149,18 @@ export function Audit() {
       {result && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
           
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
+            <button 
+              onClick={handleSaveLead}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 font-medium"
+            >
+              <Save size={18} />
+              {language === 'es' ? 'Guardar Lead' : 'Save Lead'}
+            </button>
             <button 
               onClick={handleDownloadPDF}
               disabled={generatingPdf}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 font-medium"
             >
               {generatingPdf ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
               {language === 'es' ? 'Descargar Informe PDF' : 'Download PDF Report'}
@@ -307,7 +320,7 @@ export function Audit() {
                 </ul>
               </div>
 
-              <div data-html2canvas-ignore className="bg-blue-600 rounded-3xl p-8 text-white shadow-lg flex flex-col justify-between relative overflow-hidden">
+              <div className="bg-blue-600 rounded-3xl p-8 text-white shadow-lg flex flex-col justify-between relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="relative z-10">
                   <h3 className="text-2xl font-bold mb-2">
@@ -335,12 +348,45 @@ export function Audit() {
                 </div>
                 
                 <button 
+                  data-html2canvas-ignore
                   onClick={handleSaveLead}
                   className="w-full py-4 bg-white text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 shadow-lg relative z-10"
                 >
                   <Save size={20} />
                   {language === 'es' ? 'Guardar Lead en Pipeline' : 'Save Lead to Pipeline'}
                 </button>
+              </div>
+            </div>
+
+            {/* Local Entity Profile (Markdown) */}
+            <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 text-slate-300 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/10 rounded-lg">
+                    <FileText className="text-blue-400" size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-lg">
+                      {language === 'es' ? 'Perfil de Entidad Local' : 'Local Entity Profile'}
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      {language === 'es' ? 'Formato Markdown para entrega al cliente' : 'Markdown format for client delivery'}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => navigator.clipboard.writeText(generateEntityProfileMarkdown(mockLeadForMarkdown))}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-blue-900/20"
+                >
+                  <Copy size={14} />
+                  {language === 'es' ? 'Copiar Markdown' : 'Copy Markdown'}
+                </button>
+              </div>
+              
+              <div className="bg-black/50 rounded-xl p-6 overflow-x-auto border border-slate-800/50 relative group">
+                <pre className="font-mono text-xs text-blue-300 leading-relaxed whitespace-pre-wrap">
+                  {generateEntityProfileMarkdown(mockLeadForMarkdown)}
+                </pre>
               </div>
             </div>
           </div>
