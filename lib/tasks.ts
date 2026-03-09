@@ -80,3 +80,49 @@ export async function getTasksByClient(clienteId: string): Promise<Tarea[]> {
   }
   return data ?? []
 }
+
+export async function createTask(
+  task: Omit<Tarea, 'id' | 'created_at' | 'completed_at'>
+): Promise<Tarea> {
+  // Mock: generar tarea con id temporal
+  const mockTask: Tarea = {
+    ...task,
+    id: `t-${Date.now()}`,
+    created_at: new Date().toISOString(),
+    completed_at: null,
+  }
+
+  if (!supabase) return mockTask
+
+  const { data, error } = await supabase
+    .from('tareas')
+    .insert(task)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating task:', error)
+    return mockTask
+  }
+  return data
+}
+
+export async function updateTask(
+  id: string,
+  updates: Partial<Pick<Tarea, 'estado' | 'resultado' | 'completed_at'>>
+): Promise<Tarea | null> {
+  if (!supabase) return null
+
+  const { data, error } = await supabase
+    .from('tareas')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating task:', error)
+    return null
+  }
+  return data
+}
