@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { supabaseAdmin } from './supabase-admin'
 import type { Tarea } from '@/types'
 
 // ---- Datos mock ----
@@ -66,9 +67,11 @@ const MOCK_TASKS: Tarea[] = [
 ]
 
 export async function getTasksByClient(clienteId: string): Promise<Tarea[]> {
-  if (!supabase) return MOCK_TASKS.filter((t) => t.cliente_id === clienteId)
+  // Usamos supabaseAdmin porque la tabla tareas tiene SELECT restringido a service_role
+  const client = supabaseAdmin ?? supabase
+  if (!client) return MOCK_TASKS.filter((t) => t.cliente_id === clienteId)
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('tareas')
     .select('*')
     .eq('cliente_id', clienteId)
@@ -92,9 +95,9 @@ export async function createTask(
     completed_at: null,
   }
 
-  if (!supabase) return mockTask
+  if (!supabaseAdmin) return mockTask
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('tareas')
     .insert(task)
     .select()
@@ -111,9 +114,9 @@ export async function updateTask(
   id: string,
   updates: Partial<Pick<Tarea, 'estado' | 'resultado' | 'completed_at'>>
 ): Promise<Tarea | null> {
-  if (!supabase) return null
+  if (!supabaseAdmin) return null
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('tareas')
     .update(updates)
     .eq('id', id)

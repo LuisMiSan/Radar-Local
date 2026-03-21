@@ -37,7 +37,7 @@ const PACK_SUBTITLES: Record<string, string> = {
 
 export default function PresupuestoPage() {
   const params = useParams()
-  const auditId = params.id as string
+  const auditId = Array.isArray(params.id) ? params.id[0] : params.id ?? ''
 
   const [presupuesto, setPresupuesto] = useState<Presupuesto | null>(null)
   const [negocio, setNegocio] = useState<NegocioResumen | null>(null)
@@ -45,7 +45,9 @@ export default function PresupuestoPage() {
   const [error, setError] = useState('')
 
   // Estado envío email
+  const [originalEmail, setOriginalEmail] = useState('')
   const [email, setEmail] = useState('')
+  const [useOtherEmail, setUseOtherEmail] = useState(false)
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [emailError, setEmailError] = useState('')
@@ -58,6 +60,10 @@ export default function PresupuestoPage() {
         if (!res.ok) throw new Error(data.error ?? 'Error al cargar presupuesto')
         setPresupuesto(data.presupuesto)
         setNegocio(data.negocio)
+        if (data.email) {
+          setOriginalEmail(data.email)
+          setEmail(data.email)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error inesperado')
       } finally {
@@ -230,7 +236,7 @@ export default function PresupuestoPage() {
                     <p className="text-sm font-semibold text-primary mb-1">
                       €{data.retorno_estimado.toLocaleString('es-ES')}
                     </p>
-                    <p className="text-xs text-neutral-400">{data.descripcion}</p>
+                    <p className="text-xs text-neutral-700">{data.descripcion}</p>
                   </div>
                 ))}
               </div>
@@ -286,21 +292,58 @@ export default function PresupuestoPage() {
                   </div>
                   <p className="font-medium text-primary text-sm mb-1">¡Enviado!</p>
                   <p className="text-xs text-neutral-500">
-                    Revisa tu bandeja de entrada. Si no lo ves, mira la carpeta de spam.
+                    Enviado a <strong>{email}</strong>. Si no lo ves, revisa spam.
                   </p>
                 </div>
               ) : (
                 <form onSubmit={handleSendEmail} className="space-y-3">
                   <p className="text-sm text-neutral-500">
-                    Te enviamos el presupuesto completo con el detalle del plan de acción.
+                    Te enviamos el presupuesto completo con el plan de acción.
                   </p>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
-                  />
+
+                  {/* Mostrar email original */}
+                  {originalEmail && !useOtherEmail ? (
+                    <div>
+                      <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-neutral-50 border border-neutral-200">
+                        <Mail className="w-4 h-4 text-neutral-400 shrink-0" />
+                        <span className="text-sm text-neutral-700 font-medium truncate">{originalEmail}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseOtherEmail(true)
+                          setEmail('')
+                        }}
+                        className="text-xs text-accent hover:underline mt-2"
+                      >
+                        Enviar a otro email diferente
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="otro@email.com"
+                        className="w-full px-4 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
+                        autoFocus
+                      />
+                      {originalEmail && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUseOtherEmail(false)
+                            setEmail(originalEmail)
+                          }}
+                          className="text-xs text-accent hover:underline mt-2"
+                        >
+                          Usar {originalEmail}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {emailError && (
                     <p className="text-xs text-red-600">{emailError}</p>
                   )}
@@ -360,7 +403,7 @@ export default function PresupuestoPage() {
             {/* CTA agendar llamada */}
             <div className="bg-white rounded-2xl border border-neutral-100 p-6 text-center">
               <p className="text-sm text-neutral-500 mb-4">
-                ¿Tienes dudas? Agendam una llamada de 15 min sin compromiso.
+                ¿Tienes dudas? Agenda una llamada de 15 min sin compromiso.
               </p>
               <a
                 href="mailto:hola@radarlocal.es?subject=Quiero%20saber%20m%C3%A1s%20sobre%20Radar%20Local"

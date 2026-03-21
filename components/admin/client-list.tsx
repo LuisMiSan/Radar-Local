@@ -40,8 +40,11 @@ export default function ClientList({ clients }: ClientListProps) {
             >
               <td className="py-3 px-4">
                 <Link href={`/admin/clientes/${client.id}`} className="font-medium text-primary hover:text-accent transition-colors">
-                  {client.nombre}
+                  {client.nombre || client.negocio || 'Sin nombre'}
                 </Link>
+                {client.nombre && client.negocio && (
+                  <p className="text-xs text-neutral-400">{client.negocio}</p>
+                )}
                 {client.es_fundador && (
                   <span className="ml-2 text-xs text-accent font-medium">Fundador</span>
                 )}

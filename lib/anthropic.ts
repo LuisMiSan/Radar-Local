@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 
 // Mismo patrón que lib/supabase.ts — null si no hay API key
-const apiKey = process.env.ANTHROPIC_API_KEY ?? ''
+// Usamos RADAR_ANTHROPIC_KEY porque ANTHROPIC_API_KEY está vacía en el sistema (Claude Code la define)
+const apiKey = (process.env.RADAR_ANTHROPIC_KEY ?? '').trim()
 
 export const anthropic = apiKey
   ? new Anthropic({ apiKey })

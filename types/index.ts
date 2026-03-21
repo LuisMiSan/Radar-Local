@@ -3,9 +3,16 @@
 // Packs de servicio
 export type Pack = 'visibilidad_local' | 'autoridad_maps_ia'
 
-// Estados
-export type EstadoCliente = 'activo' | 'inactivo' | 'pausado'
+// Estados del pipeline CRM (en orden de progresión)
+// lead → contactado → llamada_info → propuesta_enviada → negociando → llamada_onboarding → activo → pausado → eliminado
+export type EstadoCliente = 'lead' | 'contactado' | 'llamada_info' | 'propuesta_enviada' | 'negociando' | 'llamada_onboarding' | 'activo' | 'pausado' | 'eliminado'
 export type EstadoTarea = 'pendiente' | 'en_progreso' | 'completada' | 'error'
+
+// Estados para tareas de ejecución (lo que los agentes HACEN, no solo reportan)
+export type TipoEjecucion = 'auto' | 'revision' | 'manual'
+export type PrioridadTarea = 'critica' | 'alta' | 'media' | 'baja'
+export type EstadoEjecucion = 'pendiente' | 'aprobada' | 'ejecutando' | 'completada' | 'fallo' | 'rechazada' | 'omitida'
+export type CategoriaEjecucion = 'mejora' | 'correccion' | 'creacion' | 'verificacion'
 export type EstadoReporte = 'borrador' | 'enviado'
 
 // Agentes IA disponibles
@@ -92,6 +99,44 @@ export interface Reporte {
   created_at: string
 }
 
+// Tabla: tareas_ejecucion (lo que los agentes EJECUTAN)
+export interface TareaEjecucion {
+  id: string
+  cliente_id: string
+  agente: Agente
+  informe_id: string | null
+  titulo: string
+  descripcion: string
+  categoria: CategoriaEjecucion
+  tipo: TipoEjecucion          // auto | revision | manual
+  prioridad: PrioridadTarea    // critica | alta | media | baja
+  estado: EstadoEjecucion      // pendiente | aprobada | ejecutando | completada | fallo | rechazada | omitida
+  campo_gbp: string | null     // qué campo del GBP afecta
+  valor_actual: string | null  // valor actual
+  valor_propuesto: string | null // lo que el agente propone
+  accion_api: Record<string, unknown> | null  // datos para la API de GBP
+  resultado: string | null     // qué pasó al ejecutar
+  error: string | null         // detalle del error si falló
+  aprobado_por: string | null
+  aprobado_en: string | null
+  ejecutado_en: string | null
+  created_at: string
+  updated_at: string
+}
+
+// Resumen de progreso por cliente (vista SQL)
+export interface ResumenProgreso {
+  cliente_id: string
+  agente: Agente
+  total_tareas: number
+  completadas: number
+  pendientes: number
+  esperando_aprobacion: number
+  en_ejecucion: number
+  fallidas: number
+  porcentaje_completado: number
+}
+
 // Helpers para labels en UI
 export const PACK_LABELS: Record<Pack, string> = {
   visibilidad_local: 'Visibilidad Local',
@@ -99,9 +144,73 @@ export const PACK_LABELS: Record<Pack, string> = {
 }
 
 export const ESTADO_LABELS: Record<EstadoCliente, string> = {
+  lead: 'Lead',
+  contactado: 'Contactado',
+  llamada_info: 'Llamada de información',
+  propuesta_enviada: 'Propuesta enviada',
+  negociando: 'Negociando',
+  llamada_onboarding: 'Llamada de onboarding',
   activo: 'Activo',
-  inactivo: 'Inactivo',
   pausado: 'Pausado',
+  eliminado: 'Eliminado',
+}
+
+// Colores para cada estado del pipeline (usado en UI)
+export const ESTADO_COLORS: Record<EstadoCliente, { bg: string; text: string; dot: string }> = {
+  lead: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
+  contactado: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+  llamada_info: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
+  propuesta_enviada: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  negociando: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
+  llamada_onboarding: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
+  activo: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  pausado: { bg: 'bg-neutral-50', text: 'text-neutral-500', dot: 'bg-neutral-400' },
+  eliminado: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+}
+
+// Orden del pipeline para la vista Kanban
+export const PIPELINE_ORDER: EstadoCliente[] = [
+  'lead', 'contactado', 'llamada_info', 'propuesta_enviada', 'negociando', 'llamada_onboarding', 'activo', 'pausado', 'eliminado',
+]
+
+export const TIPO_EJECUCION_LABELS: Record<TipoEjecucion, string> = {
+  auto: 'Automático',
+  revision: 'Requiere aprobación',
+  manual: 'Manual',
+}
+
+export const PRIORIDAD_LABELS: Record<PrioridadTarea, string> = {
+  critica: 'Crítica',
+  alta: 'Alta',
+  media: 'Media',
+  baja: 'Baja',
+}
+
+export const PRIORIDAD_COLORS: Record<PrioridadTarea, { bg: string; text: string }> = {
+  critica: { bg: 'bg-red-50 dark:bg-red-950', text: 'text-red-700 dark:text-red-300' },
+  alta: { bg: 'bg-orange-50 dark:bg-orange-950', text: 'text-orange-700 dark:text-orange-300' },
+  media: { bg: 'bg-blue-50 dark:bg-blue-950', text: 'text-blue-700 dark:text-blue-300' },
+  baja: { bg: 'bg-neutral-50 dark:bg-neutral-900', text: 'text-neutral-600 dark:text-neutral-400' },
+}
+
+export const ESTADO_EJECUCION_LABELS: Record<EstadoEjecucion, string> = {
+  pendiente: 'Pendiente',
+  aprobada: 'Aprobada',
+  ejecutando: 'Ejecutando...',
+  completada: 'Completada',
+  fallo: 'Falló',
+  rechazada: 'Rechazada',
+  omitida: 'Omitida',
+}
+
+export const ESTADO_EJECUCION_COLORS: Record<EstadoEjecucion, { bg: string; text: string; dot: string }> = {
+  pendiente: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+  aprobada: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
+  ejecutando: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
+  completada: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  fallo: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+  rechazada: { bg: 'bg-neutral-50', text: 'text-neutral-500', dot: 'bg-neutral-400' },
+  omitida: { bg: 'bg-neutral-50', text: 'text-neutral-400', dot: 'bg-neutral-300' },
 }
 
 export const AGENTE_LABELS: Record<Agente, string> = {

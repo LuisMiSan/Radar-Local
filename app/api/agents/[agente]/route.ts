@@ -51,6 +51,15 @@ export async function POST(
     )
   }
 
+  // Validar formato UUID para evitar inyección
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (typeof clienteId !== 'string' || !UUID_REGEX.test(clienteId)) {
+    return NextResponse.json(
+      { error: 'clienteId debe ser un UUID válido' },
+      { status: 400 }
+    )
+  }
+
   // Ejecutar agente
   const result = await runAgent(agente as Agente, clienteId)
 

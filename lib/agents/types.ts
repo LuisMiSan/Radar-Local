@@ -1,17 +1,48 @@
-import type { Agente, Cliente, Pack, PerfilGBP } from '@/types'
+import type { Agente, Cliente, Pack, PerfilGBP, TipoEjecucion, PrioridadTarea, CategoriaEjecucion } from '@/types'
 
 // Entrada para todos los agentes
 export interface AgentInput {
   cliente: Cliente
   perfilGbp: PerfilGBP | null
+  previousResults?: AgentResult[]
+  modo?: 'auditoria' | 'ejecucion'  // NUEVO: qué modo de operación
 }
 
-// Resultado de ejecución de un agente
+// Uso de tokens de la API
+export interface TokenUsage {
+  input_tokens: number
+  output_tokens: number
+  model: string
+  coste_input: number   // USD
+  coste_output: number  // USD
+  coste_total: number   // USD
+}
+
+// ══════════════════════════════════════════════════════════════
+// NUEVO: Tarea ejecutable que genera un agente
+// El agente no solo dice "esto está mal", genera la tarea para arreglarlo
+// ══════════════════════════════════════════════════════════════
+
+export interface TareaGenerada {
+  titulo: string                    // "Reescribir descripción del GBP"
+  descripcion: string               // "La descripción actual es genérica..."
+  categoria: CategoriaEjecucion     // mejora | correccion | creacion | verificacion
+  tipo: TipoEjecucion              // auto | revision | manual
+  prioridad: PrioridadTarea        // critica | alta | media | baja
+  campo_gbp: string | null         // campo del GBP que afecta
+  valor_actual: string | null      // valor actual
+  valor_propuesto: string | null   // lo que el agente propone como solución
+  accion_api?: Record<string, unknown>  // datos para API de GBP (futuro)
+}
+
+// Resultado de ejecución de un agente (EVOLUCIONADO)
 export interface AgentResult {
   agente: Agente
   estado: 'completada' | 'error'
   datos: Record<string, unknown>
   resumen: string
+  usage?: TokenUsage
+  tareas?: TareaGenerada[]         // NUEVO: tareas ejecutables que generó
 }
 
 // Firma de una función runner de agente

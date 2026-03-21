@@ -1,7 +1,7 @@
-// Lógica de presupuesto + ROI — mock-first (sin Resend/SendGrid real)
+// Generación de presupuesto personalizado — mock-first
 import type { AuditResult } from './audit'
 
-export interface MesROI {
+export interface ROIMes {
   inversion: number
   retorno_estimado: number
   roi: string
@@ -9,136 +9,104 @@ export interface MesROI {
 }
 
 export interface Presupuesto {
-  id: string
-  audit_id: string
   pack_recomendado: 'visibilidad_local' | 'autoridad_maps_ia'
   precio_mensual: number
   precio_fundador: number
   ahorro_mensual: number
+  incluye: string[]
   mejoras_esperadas: string[]
   roi_estimado: {
-    mes_1: MesROI
-    mes_2: MesROI
-    mes_3: MesROI
+    mes_1: ROIMes
+    mes_2: ROIMes
+    mes_3: ROIMes
   }
-  incluye: string[]
-  created_at: string
 }
 
-// Precios por pack
 const PRECIOS: Record<string, { mensual: number; fundador: number }> = {
   visibilidad_local: { mensual: 197, fundador: 138 },
   autoridad_maps_ia: { mensual: 397, fundador: 278 },
 }
 
-// Mejoras esperadas por pack
-const MEJORAS: Record<string, string[]> = {
-  visibilidad_local: [
-    'Aparecer en el Top 3 de Google Maps en tu zona',
-    'Aumento del 40% en llamadas directas desde Maps',
-    'Perfil GBP optimizado al 95%',
-    'Fotos y posts semanales gestionados por tu agente IA',
-    'Respuesta a todas las reseñas en menos de 24h',
-  ],
-  autoridad_maps_ia: [
-    'Posicionamiento en ChatGPT, Gemini y Perplexity',
-    'Aparecer en búsquedas por voz de Siri y Alexa',
-    'Autoridad como referente local en tu categoría',
-    'Schema LocalBusiness + FAQ optimizadas para IA generativa',
-    'Monitorización semanal en 5 plataformas IA',
-    'Todo lo incluido en Pack Visibilidad Local',
-  ],
-}
-
-// Servicios incluidos por pack
 const INCLUYE: Record<string, string[]> = {
   visibilidad_local: [
-    'Auditoría GBP mensual',
-    'Optimización NAP en +30 directorios',
-    'Gestión de fotos y posts GBP (4 posts/mes)',
-    'Respuesta a todas las reseñas',
-    'Keywords locales activadas en perfil',
-    'Informe de resultados mensual',
+    'Auditoría completa de tu perfil de Google Business',
+    'Optimización NAP en directorios principales',
+    'Investigación de keywords locales para tu zona',
+    'Gestión y respuesta de reseñas (templates + estrategia)',
+    'Creación de 4 posts GBP mensuales',
+    'Informe mensual de rendimiento Maps',
   ],
   autoridad_maps_ia: [
-    'Todo el Pack Visibilidad Local',
-    'Schema markup LocalBusiness avanzado',
-    'FAQ estructuradas para LLMs (ChatGPT, Gemini)',
-    'Chunks de contenido GEO/AEO optimizados',
-    'Resumen de entidad para IA generativa',
-    'Monitor mensual de presencia en 5 plataformas IA',
-    'Informe GEO/AEO detallado',
+    'Todo lo incluido en Visibilidad Local',
+    'Generación de schema markup LocalBusiness + FAQ',
+    'Creación de contenido optimizado para LLMs (GEO/AEO)',
+    'Chunks semánticos para bases de conocimiento IA',
+    'Ficha TL;DR de entidad para ChatGPT y Gemini',
+    'Monitorización mensual de presencia en IAs',
+    'Reporte ejecutivo Map Pack + GEO/AEO',
+    'Informe mensual con métricas de ambos canales',
   ],
 }
 
-// Factores ROI por categoría (x1, x2, x3 meses)
-const ROI_MULTIPLIERS: Record<string, [number, number, number]> = {
-  'clinica dental': [2, 6, 16],
-  fisioterapia: [1.5, 4, 10],
-  veterinaria: [2, 5, 12],
-  peluqueria: [1.5, 3.5, 8],
-  restaurante: [2, 5, 14],
-  'clinica estetica': [2.5, 7, 18],
-  optica: [1.5, 4, 10],
-  gimnasio: [1.5, 4, 9],
-  'taller mecanico': [2, 5, 12],
+const MEJORAS: Record<string, string[]> = {
+  visibilidad_local: [
+    'Posicionamiento para aparecer en el Top 3 de Maps en tu zona',
+    'Aumento estimado del 40% en llamadas desde Maps',
+    'Perfil GBP optimizado al 95%+',
+    'Coherencia NAP en los 10 directorios principales',
+    'Estrategia de reseñas para superar a competidores',
+  ],
+  autoridad_maps_ia: [
+    'Posicionamiento para inserción en Top 3 Maps + visibilidad en ChatGPT y Gemini',
+    'Aumento estimado del 60% en contactos totales (Maps + IA)',
+    'Optimización para que IAs recomienden tu negocio en tu categoría y zona',
+    'Schema markup que mejora rich snippets en Google',
+    'Contenido optimizado para búsquedas por voz',
+    'Monitorización continua de tu presencia en LLMs',
+  ],
 }
 
 export function generatePresupuesto(audit: AuditResult): Presupuesto {
   const pack = audit.recomendacion_pack
-  const precios = PRECIOS[pack]
-  const categoria = audit.negocio.categoria.toLowerCase()
-  const [mult1, mult2, mult3] = ROI_MULTIPLIERS[categoria] ?? [2, 5, 12]
-
-  const inversion = precios.fundador // Precio fundador durante los 3 primeros meses
+  const { mensual, fundador } = PRECIOS[pack]
+  const multiplicadores =
+    pack === 'autoridad_maps_ia'
+      ? { m1: 2, m2: 8, m3: 20 }
+      : { m1: 2, m2: 6, m3: 16 }
 
   return {
-    id: `pres_${audit.id}`,
-    audit_id: audit.id,
     pack_recomendado: pack,
-    precio_mensual: precios.mensual,
-    precio_fundador: precios.fundador,
-    ahorro_mensual: precios.mensual - precios.fundador,
-    mejoras_esperadas: MEJORAS[pack] ?? MEJORAS.visibilidad_local,
+    precio_mensual: mensual,
+    precio_fundador: fundador,
+    ahorro_mensual: mensual - fundador,
+    incluye: INCLUYE[pack],
+    mejoras_esperadas: MEJORAS[pack],
     roi_estimado: {
       mes_1: {
-        inversion,
-        retorno_estimado: Math.round(inversion * mult1),
-        roi: `${mult1}x`,
-        descripcion: 'Perfil optimizado, primeras mejoras en visibilidad Maps',
+        inversion: fundador,
+        retorno_estimado: fundador * multiplicadores.m1,
+        roi: `${multiplicadores.m1}x`,
+        descripcion: 'Optimización inicial + primeros resultados Maps',
       },
       mes_2: {
-        inversion,
-        retorno_estimado: Math.round(inversion * mult2),
-        roi: `${mult2}x`,
-        descripcion: 'Entrando en el Top 5 de Maps, incremento de llamadas',
+        inversion: fundador,
+        retorno_estimado: fundador * multiplicadores.m2,
+        roi: `${multiplicadores.m2}x`,
+        descripcion: 'Posicionamiento consolidado + reseñas activas',
       },
       mes_3: {
-        inversion,
-        retorno_estimado: Math.round(inversion * mult3),
-        roi: `${mult3}x`,
-        descripcion: 'Top 3 Maps consolidado, nuevos clientes recurrentes',
+        inversion: fundador,
+        retorno_estimado: fundador * multiplicadores.m3,
+        roi: `${multiplicadores.m3}x`,
+        descripcion: 'Posición consolidada + captación recurrente',
       },
     },
-    incluye: INCLUYE[pack] ?? INCLUYE.visibilidad_local,
-    created_at: new Date().toISOString(),
   }
 }
 
-export async function sendPresupuestoEmail(
-  email: string,
-  presupuesto: Presupuesto,
-  negocioNombre: string
-): Promise<void> {
-  // Mock: simular latencia de envío
-  await new Promise((r) => setTimeout(r, 700))
-  console.log(
-    `[MOCK EMAIL] ──────────────────────────────\n` +
-      `  Para: ${email}\n` +
-      `  Negocio: ${negocioNombre}\n` +
-      `  Pack: ${presupuesto.pack_recomendado}\n` +
-      `  Precio fundador: €${presupuesto.precio_fundador}/mes\n` +
-      `  ROI mes 3: ${presupuesto.roi_estimado.mes_3.roi}\n` +
-      `──────────────────────────────`
-  )
+export function sendEmail(email: string, presupuesto: Presupuesto): void {
+  console.log(`[MOCK EMAIL] Presupuesto enviado a: ${email}`)
+  console.log(`  Pack: ${presupuesto.pack_recomendado}`)
+  console.log(`  Precio fundador: €${presupuesto.precio_fundador}/mes`)
+  console.log(`  ROI 3 meses: ${presupuesto.roi_estimado.mes_3.roi}`)
 }

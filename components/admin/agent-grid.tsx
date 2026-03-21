@@ -1,6 +1,8 @@
 'use client'
 
-import { getAgentsByCategory } from '@/lib/agents'
+// Importamos directamente de config.ts (no del barrel index.ts)
+// porque index.ts importa clients/tasks que usan supabase-admin (server-only)
+import { getAgentsByCategory } from '@/lib/agents/config'
 import type { AgentConfig } from '@/lib/agents/types'
 import AgentCard from './agent-card'
 

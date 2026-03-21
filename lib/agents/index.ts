@@ -2,14 +2,18 @@ import type { Agente } from '@/types'
 import { getClientById } from '@/lib/clients'
 import { getProfileByClient } from '@/lib/profiles'
 import { createTask, updateTask } from '@/lib/tasks'
+import { registrarGastoAgente } from '@/lib/gastos'
+import { guardarTareasGeneradas } from '@/lib/tareas-ejecucion'
 import { getAgentConfig } from './config'
 import { runAgentExecution } from './runner'
 import type { AgentResult } from './types'
 
 // Orquestador principal: ejecuta un agente para un cliente
+// previousResults: resultados de agentes previos (para el generador_reporte)
 export async function runAgent(
   agente: Agente,
-  clienteId: string
+  clienteId: string,
+  previousResults?: AgentResult[]
 ): Promise<AgentResult> {
   // 1. Validar que el agente existe
   const config = getAgentConfig(agente)
@@ -56,14 +60,39 @@ export async function runAgent(
   })
 
   // 6. Ejecutar el agente
-  const result = await runAgentExecution(agente, { cliente, perfilGbp })
+  const result = await runAgentExecution(agente, { cliente, perfilGbp, previousResults })
 
-  // 7. Actualizar tarea con resultado
+  // 7. Registrar consumo de API (no bloquea)
+  registrarGastoAgente(
+    agente,
+    result.usage,
+    clienteId,
+    cliente.negocio ?? cliente.nombre ?? undefined,
+    previousResults ? 'analisis_completo' : 'individual'
+  ).catch((e) => console.error('[gastos] Error registrando:', e))
+
+  // 8. Actualizar tarea con resultado
   await updateTask(tarea.id, {
     estado: result.estado,
     resultado: result.datos,
     completed_at: result.estado === 'completada' ? new Date().toISOString() : null,
   })
+
+  // 9. NUEVO: Si el agente generó tareas ejecutables, guardarlas en Supabase
+  if (result.tareas && result.tareas.length > 0) {
+    try {
+      const tareasGuardadas = await guardarTareasGeneradas(
+        clienteId,
+        agente,
+        result.tareas,
+        tarea.id  // ID del informe/tarea que originó estas tareas
+      )
+      console.log(`[${agente}] ${tareasGuardadas.length} tareas de ejecución guardadas`)
+    } catch (e) {
+      console.error(`[${agente}] Error guardando tareas de ejecución:`, e)
+      // No fallamos la ejecución por esto — las tareas están en result.tareas
+    }
+  }
 
   return result
 }

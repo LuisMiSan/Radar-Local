@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { supabaseAdmin } from './supabase-admin'
 import type { PerfilGBP } from '@/types'
 
 // ---- Datos mock ----
@@ -60,9 +61,11 @@ const MOCK_PROFILES: PerfilGBP[] = [
 ]
 
 export async function getProfileByClient(clienteId: string): Promise<PerfilGBP | null> {
-  if (!supabase) return MOCK_PROFILES.find((p) => p.cliente_id === clienteId) ?? null
+  // Usamos supabaseAdmin porque perfiles_gbp tiene SELECT restringido a service_role
+  const client = supabaseAdmin ?? supabase
+  if (!client) return MOCK_PROFILES.find((p) => p.cliente_id === clienteId) ?? null
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('perfiles_gbp')
     .select('*')
     .eq('cliente_id', clienteId)

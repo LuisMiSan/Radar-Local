@@ -14,6 +14,8 @@ import {
   Code,
   Eye,
   Search,
+  ExternalLink,
+  TrendingDown,
   type LucideIcon,
 } from 'lucide-react'
 import type { AuditResult } from '@/lib/audit'
@@ -29,10 +31,10 @@ const gapIcons: Record<string, LucideIcon> = {
   Search,
 }
 
-const impactoColor: Record<string, { bg: string; text: string; label: string }> = {
-  alto: { bg: 'bg-red-50', text: 'text-red-600', label: 'Impacto alto' },
-  medio: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Impacto medio' },
-  bajo: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Impacto bajo' },
+const impactoColor: Record<string, { bg: string; text: string; label: string; bar: string }> = {
+  alto: { bg: 'bg-red-50', text: 'text-red-600', label: 'Impacto alto', bar: 'bg-red-500' },
+  medio: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Impacto medio', bar: 'bg-amber-500' },
+  bajo: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Impacto bajo', bar: 'bg-blue-500' },
 }
 
 function PuntuacionCircle({
@@ -88,6 +90,73 @@ function PuntuacionCircle({
   )
 }
 
+/** Barra de comparación visual simple */
+function ComparisonBar({
+  label,
+  tuScore,
+  comp1Score,
+  comp2Score,
+  comp1Name,
+  comp2Name,
+}: {
+  label: string
+  tuScore: number
+  comp1Score: number
+  comp2Score: number
+  comp1Name: string
+  comp2Name: string
+}) {
+  const barColor = (score: number) =>
+    score >= 70 ? 'bg-green-500' : score >= 50 ? 'bg-amber-400' : 'bg-red-500'
+
+  return (
+    <div className="py-4 border-b border-neutral-50 last:border-0">
+      <p className="text-sm font-semibold text-neutral-800 mb-3">{label}</p>
+      <div className="space-y-2">
+        {/* Tu negocio */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-neutral-500 w-10 text-right font-medium">Tú</span>
+          <div className="flex-1 bg-neutral-100 rounded-full h-5 relative overflow-hidden">
+            <div
+              className={`h-5 rounded-full ${barColor(tuScore)} transition-all duration-700`}
+              style={{ width: `${tuScore}%` }}
+            />
+            <span className="absolute inset-y-0 right-2 flex items-center text-[11px] font-bold text-neutral-700">
+              {tuScore}
+            </span>
+          </div>
+        </div>
+        {/* Competidor 1 */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-neutral-400 w-10 text-right truncate" title={comp1Name}>C1</span>
+          <div className="flex-1 bg-neutral-100 rounded-full h-3.5 relative overflow-hidden">
+            <div
+              className="h-3.5 rounded-full bg-blue-400/70 transition-all duration-700"
+              style={{ width: `${comp1Score}%` }}
+            />
+            <span className="absolute inset-y-0 right-2 flex items-center text-[10px] font-medium text-neutral-500">
+              {comp1Score}
+            </span>
+          </div>
+        </div>
+        {/* Competidor 2 */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-neutral-400 w-10 text-right truncate" title={comp2Name}>C2</span>
+          <div className="flex-1 bg-neutral-100 rounded-full h-3.5 relative overflow-hidden">
+            <div
+              className="h-3.5 rounded-full bg-indigo-400/70 transition-all duration-700"
+              style={{ width: `${comp2Score}%` }}
+            />
+            <span className="absolute inset-y-0 right-2 flex items-center text-[10px] font-medium text-neutral-500">
+              {comp2Score}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AuditoriaResultsPage() {
   const params = useParams()
   const router = useRouter()
@@ -98,7 +167,7 @@ export default function AuditoriaResultsPage() {
   useEffect(() => {
     async function fetchResult() {
       try {
-        const res = await fetch(`/api/audit?id=${params.id}`)
+        const res = await fetch(`/api/audit?id=${encodeURIComponent(params.id as string)}`)
         if (!res.ok) throw new Error('Auditoría no encontrada')
         const data = await res.json()
         setResult(data)
@@ -141,6 +210,16 @@ export default function AuditoriaResultsPage() {
     )
   }
 
+  const comp1Name = result.competidores[0].nombre
+  const comp2Name = result.competidores[1].nombre
+
+  // Calcular media competidores vs tu negocio
+  const tuMedia = result.negocio.puntuacion
+  const compMedia = Math.round(
+    (result.competidores[0].puntuacion + result.competidores[1].puntuacion) / 2
+  )
+  const diferencia = compMedia - tuMedia
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Nav */}
@@ -180,15 +259,24 @@ export default function AuditoriaResultsPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             {/* Competidor 1 */}
-            <div>
+            <div className="flex flex-col items-center">
               <PuntuacionCircle
                 puntuacion={result.competidores[0].puntuacion}
                 size="sm"
               />
               <p className="font-medium text-neutral-700 mt-3 text-sm">
-                {result.competidores[0].nombre}
+                {comp1Name}
               </p>
-              <p className="text-xs text-neutral-400 mt-1">Competidor #1</p>
+              <a
+                href={`https://www.google.com/maps/search/${encodeURIComponent(comp1Name + ' ' + result.negocio.zona)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-accent hover:underline mt-1"
+              >
+                <MapPin className="w-3 h-3" />
+                Ver en Google Maps
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
 
             {/* Tu negocio */}
@@ -201,66 +289,132 @@ export default function AuditoriaResultsPage() {
             </div>
 
             {/* Competidor 2 */}
-            <div>
+            <div className="flex flex-col items-center">
               <PuntuacionCircle
                 puntuacion={result.competidores[1].puntuacion}
                 size="sm"
               />
               <p className="font-medium text-neutral-700 mt-3 text-sm">
-                {result.competidores[1].nombre}
+                {comp2Name}
               </p>
-              <p className="text-xs text-neutral-400 mt-1">Competidor #2</p>
+              <a
+                href={`https://www.google.com/maps/search/${encodeURIComponent(comp2Name + ' ' + result.negocio.zona)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-accent hover:underline mt-1"
+              >
+                <MapPin className="w-3 h-3" />
+                Ver en Google Maps
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
           </div>
 
+          {/* Alerta visual si estás por debajo */}
           {result.negocio.puntuacion < 60 && (
             <div className="mt-8 bg-red-50 rounded-xl p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+              <TrendingDown className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-red-700">
-                  Tu negocio está por debajo de tus competidores directos
+                  Estás <span className="font-bold">{diferencia} puntos por debajo</span> de la media de tus competidores
                 </p>
                 <p className="text-xs text-red-600 mt-1">
-                  Con una puntuación de {result.negocio.puntuacion}/100, estás
-                  perdiendo clientes que te buscan en Google Maps y asistentes IA.
+                  Puntuación {tuMedia}/100 vs media competidores {compMedia}/100 &mdash; estás perdiendo clientes en Google Maps.
                 </p>
               </div>
             </div>
           )}
         </div>
 
+        {/* Comparativa por área — barras claras */}
+        {(result.dimensiones ?? []).length > 0 && (
+          <div className="bg-white rounded-2xl border border-neutral-100 p-8 mb-8">
+            <h2 className="text-lg font-semibold text-primary mb-2">
+              Comparativa por área
+            </h2>
+            <p className="text-sm text-neutral-500 mb-2">
+              Tu puntuación vs competidores en cada dimensión clave
+            </p>
+            {/* Leyenda */}
+            <div className="flex flex-wrap gap-4 mb-4 text-xs">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <span className="text-neutral-600 font-medium">Tú &mdash; {result.negocio.nombre}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-blue-400" />
+                <span className="text-neutral-500">C1 &mdash; {comp1Name}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-indigo-400" />
+                <span className="text-neutral-500">C2 &mdash; {comp2Name}</span>
+              </div>
+            </div>
+            {/* Barras */}
+            <div>
+              {result.dimensiones.map((dim) => (
+                <ComparisonBar
+                  key={dim.dimension}
+                  label={dim.dimension}
+                  tuScore={dim.tu_negocio}
+                  comp1Score={dim.competidor1}
+                  comp2Score={dim.competidor2}
+                  comp1Name={comp1Name}
+                  comp2Name={comp2Name}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Gaps detectados */}
         <div className="bg-white rounded-2xl border border-neutral-100 p-8 mb-8">
-          <h2 className="text-lg font-semibold text-primary mb-2">
-            Gaps detectados
-          </h2>
-          <p className="text-sm text-neutral-500 mb-6">
-            Áreas donde pierdes visibilidad frente a tus competidores
-          </p>
-          <div className="space-y-3">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-lg bg-red-50">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-primary">
+                Gaps detectados
+              </h2>
+              <p className="text-sm text-neutral-500">
+                {result.gaps.length} áreas de mejora identificadas
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {result.gaps.map((gap) => {
               const Icon = gapIcons[gap.icono] ?? AlertTriangle
               const impacto = impactoColor[gap.impacto]
+              const urgencia = gap.impacto === 'alto' ? 90 : gap.impacto === 'medio' ? 60 : 35
               return (
                 <div
                   key={gap.area}
-                  className="flex items-start gap-4 p-4 rounded-xl border border-neutral-100 hover:border-neutral-200 transition-colors"
+                  className="p-4 rounded-xl border border-neutral-100 hover:border-neutral-200 transition-colors"
                 >
-                  <div className={`p-2 rounded-lg ${impacto.bg}`}>
-                    <Icon className={`w-5 h-5 ${impacto.text}`} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-sm text-neutral-900">
-                        {gap.area}
-                      </h3>
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${impacto.bg} ${impacto.text}`}
-                      >
-                        {impacto.label}
-                      </span>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${impacto.bg}`}>
+                      <Icon className={`w-4 h-4 ${impacto.text}`} />
                     </div>
-                    <p className="text-xs text-neutral-500">{gap.descripcion}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-sm text-neutral-900">
+                          {gap.area}
+                        </h3>
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${impacto.bg} ${impacto.text}`}
+                        >
+                          {impacto.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-neutral-500 mb-3">{gap.descripcion}</p>
+                  <div className="w-full bg-neutral-100 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full ${impacto.bar} transition-all`}
+                      style={{ width: `${urgencia}%` }}
+                    />
                   </div>
                 </div>
               )
@@ -275,9 +429,32 @@ export default function AuditoriaResultsPage() {
               key={i}
               className="bg-white rounded-2xl border border-neutral-100 p-6"
             >
-              <h3 className="font-semibold text-sm text-primary mb-3">
-                {comp.nombre}
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm text-primary">
+                  {comp.nombre}
+                </h3>
+                <a
+                  href={`https://www.google.com/maps/search/${encodeURIComponent(comp.nombre + ' ' + result.negocio.zona)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Maps
+                </a>
+              </div>
+              {/* Puntuación visual */}
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex-1 bg-neutral-100 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      comp.puntuacion >= 70 ? 'bg-green-500' : comp.puntuacion >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${comp.puntuacion}%` }}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-neutral-700">{comp.puntuacion}/100</span>
+              </div>
               <div className="space-y-2 mb-4">
                 <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide">
                   Lo que hacen bien

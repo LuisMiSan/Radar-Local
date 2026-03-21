@@ -3,6 +3,8 @@ import Card from '@/components/ui/card'
 import ClientList from '@/components/admin/client-list'
 import { getClients } from '@/lib/clients'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ClientesPage() {
   const clients = await getClients()
 

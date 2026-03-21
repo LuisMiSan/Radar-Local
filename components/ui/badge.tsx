@@ -26,11 +26,17 @@ export default function Badge({ children, variant = 'default', className = '' }:
 // Badges específicos para estado y pack
 export function EstadoBadge({ estado }: { estado: EstadoCliente }) {
   const config: Record<EstadoCliente, { label: string; variant: BadgeProps['variant'] }> = {
+    lead: { label: 'Lead', variant: 'info' },
+    contactado: { label: 'Contactado', variant: 'info' },
+    llamada_info: { label: 'Llamada info', variant: 'info' },
+    propuesta_enviada: { label: 'Propuesta', variant: 'warning' },
+    negociando: { label: 'Negociando', variant: 'warning' },
+    llamada_onboarding: { label: 'Onboarding', variant: 'accent' },
     activo: { label: 'Activo', variant: 'success' },
-    inactivo: { label: 'Inactivo', variant: 'error' },
-    pausado: { label: 'Pausado', variant: 'warning' },
+    pausado: { label: 'Pausado', variant: 'default' },
+    eliminado: { label: 'Eliminado', variant: 'error' },
   }
-  const { label, variant } = config[estado]
+  const { label, variant } = config[estado] ?? { label: estado, variant: 'default' as const }
   return <Badge variant={variant}>{label}</Badge>
 }
 

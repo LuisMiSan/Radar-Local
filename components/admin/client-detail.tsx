@@ -1,4 +1,4 @@
-import type { Cliente, Tarea } from '@/types'
+import type { Cliente, Tarea, PerfilGBP } from '@/types'
 import { EstadoBadge, PackBadge } from '@/components/ui/badge'
 import Badge from '@/components/ui/badge'
 import Card from '@/components/ui/card'
@@ -9,11 +9,21 @@ import {
   MapPin,
   Globe,
   Calendar,
+  Star,
+  Image as ImageIcon,
+  MessageSquare,
+  Clock,
+  ExternalLink,
+  TrendingUp,
+  Eye,
+  PhoneCall,
+  MousePointerClick,
 } from 'lucide-react'
 
 interface ClientDetailProps {
   client: Cliente
   tasks: Tarea[]
+  profile: PerfilGBP | null
 }
 
 const estadoTareaConfig: Record<string, { label: string; variant: 'success' | 'warning' | 'error' | 'info' }> = {
@@ -23,7 +33,19 @@ const estadoTareaConfig: Record<string, { label: string; variant: 'success' | 'w
   error: { label: 'Error', variant: 'error' },
 }
 
-export default function ClientDetail({ client, tasks }: ClientDetailProps) {
+// Métricas mock para cada cliente con perfil
+function getMockMetrics(clienteId: string) {
+  const metricsMap: Record<string, { views: number; searches: number; calls: number; clicks: number; trend: number }> = {
+    '1': { views: 2340, searches: 1870, calls: 45, clicks: 312, trend: 12 },
+    '2': { views: 890, searches: 620, calls: 18, clicks: 94, trend: -3 },
+    '3': { views: 1120, searches: 780, calls: 22, clicks: 156, trend: 8 },
+  }
+  return metricsMap[clienteId] ?? null
+}
+
+export default function ClientDetail({ client, tasks, profile }: ClientDetailProps) {
+  const metrics = getMockMetrics(client.id)
+
   return (
     <div className="space-y-6">
       {/* Header info */}
@@ -91,6 +113,174 @@ export default function ClientDetail({ client, tasks }: ClientDetailProps) {
         </Card>
       </div>
 
+      {/* Perfil GBP */}
+      <Card title="Perfil Google Business">
+        {profile ? (
+          <div className="space-y-4">
+            {/* Info principal */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-primary text-lg">{profile.nombre_gbp}</h4>
+                <p className="text-sm text-neutral-500">{profile.categoria}</p>
+                {profile.descripcion && (
+                  <p className="text-sm text-neutral-600 mt-1 max-w-xl">{profile.descripcion}</p>
+                )}
+              </div>
+              {profile.url_maps && (
+                <a
+                  href={profile.url_maps}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-accent hover:underline shrink-0"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Ver en Maps
+                </a>
+              )}
+            </div>
+
+            {/* Stats rápidos */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-yellow-50 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Star className="w-4 h-4 text-yellow-500" />
+                  <span className="text-lg font-bold text-yellow-700">{profile.puntuacion ?? '—'}</span>
+                </div>
+                <p className="text-xs text-yellow-600">Puntuación</p>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <MessageSquare className="w-4 h-4 text-blue-500" />
+                  <span className="text-lg font-bold text-blue-700">{profile.resenas_count}</span>
+                </div>
+                <p className="text-xs text-blue-600">Reseñas</p>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <ImageIcon className="w-4 h-4 text-purple-500" />
+                  <span className="text-lg font-bold text-purple-700">{profile.fotos_count}</span>
+                </div>
+                <p className="text-xs text-purple-600">Fotos</p>
+              </div>
+              <div className="bg-green-50 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Clock className="w-4 h-4 text-green-500" />
+                  <span className="text-lg font-bold text-green-700">
+                    {profile.horarios ? Object.keys(profile.horarios).length : 0}
+                  </span>
+                </div>
+                <p className="text-xs text-green-600">Días abiertos</p>
+              </div>
+            </div>
+
+            {/* NAP */}
+            <div className="bg-neutral-50 rounded-lg p-4">
+              <h5 className="text-sm font-medium text-neutral-700 mb-2">Datos NAP (Name, Address, Phone)</h5>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-neutral-400 w-20 shrink-0">Nombre:</span>
+                  <span className="text-neutral-700">{profile.nap_nombre ?? '—'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-neutral-400 w-20 shrink-0">Dirección:</span>
+                  <span className="text-neutral-700">{profile.nap_direccion ?? '—'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-neutral-400 w-20 shrink-0">Teléfono:</span>
+                  <span className="text-neutral-700">{profile.nap_telefono ?? '—'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Horarios */}
+            {profile.horarios && (
+              <div>
+                <h5 className="text-sm font-medium text-neutral-700 mb-2">Horarios</h5>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {Object.entries(profile.horarios).map(([dia, horario]) => (
+                    <div key={dia} className="flex justify-between text-sm bg-neutral-50 rounded px-3 py-1.5">
+                      <span className="capitalize text-neutral-600">{dia}</span>
+                      <span className="text-neutral-800 font-medium">{String(horario)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-neutral-400">
+              Última actualización: {new Date(profile.updated_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <MapPin className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+            <p className="text-sm text-neutral-500">
+              No hay perfil de Google Business vinculado a este cliente.
+            </p>
+            {!client.pack && (
+              <p className="text-xs text-neutral-400 mt-1">
+                Asigna un pack para vincular su perfil GBP.
+              </p>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Métricas */}
+      <Card title="Métricas (últimos 30 días)">
+        {metrics ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-accent" />
+                  <span className="text-sm text-neutral-500">Visualizaciones</span>
+                </div>
+                <p className="text-2xl font-bold text-primary">{metrics.views.toLocaleString('es-ES')}</p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm text-neutral-500">Búsquedas</span>
+                </div>
+                <p className="text-2xl font-bold text-primary">{metrics.searches.toLocaleString('es-ES')}</p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <PhoneCall className="w-4 h-4 text-green-500" />
+                  <span className="text-sm text-neutral-500">Llamadas</span>
+                </div>
+                <p className="text-2xl font-bold text-primary">{metrics.calls}</p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <MousePointerClick className="w-4 h-4 text-purple-500" />
+                  <span className="text-sm text-neutral-500">Clics web</span>
+                </div>
+                <p className="text-2xl font-bold text-primary">{metrics.clicks}</p>
+              </div>
+            </div>
+
+            {/* Trend */}
+            <div className={`inline-flex items-center gap-1 text-sm px-3 py-1 rounded-full ${
+              metrics.trend >= 0
+                ? 'bg-green-50 text-green-700'
+                : 'bg-red-50 text-red-600'
+            }`}>
+              <TrendingUp className={`w-3.5 h-3.5 ${metrics.trend < 0 ? 'rotate-180' : ''}`} />
+              {metrics.trend >= 0 ? '+' : ''}{metrics.trend}% vs mes anterior
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <TrendingUp className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+            <p className="text-sm text-neutral-500">
+              Las métricas estarán disponibles cuando se ejecuten agentes para este cliente.
+            </p>
+          </div>
+        )}
+      </Card>
+
       {/* Tareas recientes */}
       <Card title="Tareas recientes">
         {tasks.length === 0 ? (
@@ -98,7 +288,7 @@ export default function ClientDetail({ client, tasks }: ClientDetailProps) {
         ) : (
           <div className="space-y-3">
             {tasks.map((task) => {
-              const config = estadoTareaConfig[task.estado] ?? { label: task.estado, variant: 'default' as const }
+              const config = estadoTareaConfig[task.estado] ?? { label: task.estado, variant: 'info' as const }
               const agenteLabel = AGENTE_LABELS[task.agente as Agente] ?? task.agente
               return (
                 <div
@@ -121,20 +311,6 @@ export default function ClientDetail({ client, tasks }: ClientDetailProps) {
           </div>
         )}
       </Card>
-
-      {/* Placeholder — Perfil GBP y Métricas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Perfil GBP">
-          <p className="text-sm text-neutral-500">
-            El perfil de Google Business se mostrará aquí cuando se vincule.
-          </p>
-        </Card>
-        <Card title="Métricas">
-          <p className="text-sm text-neutral-500">
-            Las métricas del cliente se mostrarán aquí.
-          </p>
-        </Card>
-      </div>
     </div>
   )
 }
