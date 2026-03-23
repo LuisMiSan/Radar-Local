@@ -258,6 +258,17 @@ export function generateMockResult(agente: Agente, input: AgentInput): AgentResu
       },
       resumen: `Reporte mensual de ${nombre}: posición Maps mejorada a #3, presencia en 3/4 IAs, +87% llamadas.`,
     }),
+
+    supervisor: () => ({
+      datos: {
+        completados: 11,
+        errores: 0,
+        total: 11,
+        coste_total: 0,
+        tareas_generadas: 35,
+      },
+      resumen: `Análisis completo de ${nombre}: 11/11 agentes ejecutados, 35 tareas generadas.`,
+    }),
   }
 
   const generator = mockGenerators[agente]

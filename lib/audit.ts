@@ -1,169 +1,286 @@
-// Lógica de auditoría gratuita — Supabase con fallback in-memory
-// Compara el negocio del prospecto vs 2 competidores cercanos
-
+// Audit logic - Supabase con fallback in-memory
 import { supabase } from './supabase'
-import { supabaseAdmin } from './supabase-admin'
 
-export interface AuditInput {
+// Types from landing form
+export interface AuditFormData {
   nombre_negocio: string
+  categoria: string
   direccion: string
   zona: string
-  categoria: string // ej: "clinica dental", "fisioterapia", "veterinaria"
-  nombre_contacto: string
-  puesto: string
-  telefono: string
-  email: string
+  telefono?: string
+  email?: string
+  nombre_contacto?: string
+  puesto?: string
   competidor1?: string
   competidor2?: string
 }
 
-export interface AuditCompetidor {
+// Audit result types
+export interface NegocioAuditado {
   nombre: string
-  puntuacion: number
+  direccion: string
+  zona: string
+  categoria: string
+  puntuacion: number // 0-100
+  fotos_count: number
+  resenas_count: number
+  posts_gbp: number
+  horarios_completos: boolean
+}
+
+export interface CompetidorAuditoria {
+  nombre: string
+  puntuacion: number // 0-100
   ventajas: string[]
   debilidades: string[]
+  diferencia_puntos: number
 }
 
-export interface AuditGap {
-  area: string
-  impacto: 'alto' | 'medio' | 'bajo'
+export interface GapAuditoria {
+  area: string // "Fotos GBP", "Reseñas", etc.
+  icono: 'Camera' | 'Star' | 'FileText' | 'Code' | 'Eye' | 'MapPin' | 'Search'
+  impacto: 'critica' | 'alta' | 'media' | 'baja'
   descripcion: string
-  icono: string
-}
-
-export interface AuditDimension {
-  dimension: string
-  tu_negocio: number
-  competidor1: number
-  competidor2: number
+  accion_recomendada: string
 }
 
 export interface AuditResult {
   id: string
-  negocio: {
-    nombre: string
-    direccion: string
-    zona: string
-    categoria: string
-    puntuacion: number
-  }
-  email: string
+  negocio: NegocioAuditado
+  competidores: CompetidorAuditoria[]
+  gaps: GapAuditoria[]
+  recomendacion_pack: 'visibilidad_local' | 'autoridad_maps_ia'
+  resumen: string
+  created_at: string
+  // Datos del contacto (desde el formulario)
+  email?: string
   nombre_contacto?: string
   puesto?: string
   telefono?: string
-  competidores: AuditCompetidor[]
-  gaps: AuditGap[]
-  dimensiones: AuditDimension[]
-  recomendacion_pack: 'visibilidad_local' | 'autoridad_maps_ia'
-  created_at: string
 }
 
-// Almacenamiento fallback en memoria (si Supabase no disponible)
-// Usamos declare global para tipar correctamente sin casteos inseguros
-declare global {
-  // eslint-disable-next-line no-var
-  var _radarAuditStore: Map<string, AuditResult> | undefined
+// Mock gaps by category
+const GAPS_POR_CATEGORIA: Record<string, GapAuditoria[]> = {
+  'clínica dental': [
+    {
+      area: 'Fotos GBP',
+      icono: 'Camera',
+      impacto: 'critica',
+      descripcion: 'Solo 8 fotos en tu perfil. Google recomienda 20+. Falta galería de tratamientos.',
+      accion_recomendada: 'Añadir 12+ fotos de clínica, personal, sonrisas antes/después',
+    },
+    {
+      area: 'Reseñas',
+      icono: 'Star',
+      impacto: 'alta',
+      descripcion: 'Solo 6 reseñas. Competidores tienen 40+. Puntuación: 4.2/5 vs 4.8/5.',
+      accion_recomendada: 'Solicitar reseñas a últimos 50 pacientes. Responder a todas.',
+    },
+    {
+      area: 'Posts GBP',
+      icono: 'FileText',
+      impacto: 'alta',
+      descripcion: 'Sin posts. Competidores publican 2/semana. Google da prioridad a perfiles activos.',
+      accion_recomendada: 'Crear posts sobre promociones, tips de salud bucodental, horarios especiales.',
+    },
+    {
+      area: 'Descripción',
+      icono: 'Code',
+      impacto: 'media',
+      descripcion: 'Genérica: "Clínica dental con 20 años". Falta especialidades y diferenciales.',
+      accion_recomendada: 'Destacar: implantes, estética, cirugía, atención a miedosos, pago flexible.',
+    },
+    {
+      area: 'Atributos GBP',
+      icono: 'Eye',
+      impacto: 'media',
+      descripcion: 'Faltan atributos: "Citas online", "Estacionamiento", "Pago con tarjeta".',
+      accion_recomendada: 'Activar todos los atributos disponibles en Google.',
+    },
+  ],
+  restaurante: [
+    {
+      area: 'Fotos GBP',
+      icono: 'Camera',
+      impacto: 'critica',
+      descripcion: 'Solo 5 fotos. Falta galería de platos, local, ambiente.',
+      accion_recomendada: 'Añadir 20+ fotos profesionales de platos estrella, local, mesas, barra.',
+    },
+    {
+      area: 'Menú en GBP',
+      icono: 'FileText',
+      impacto: 'critica',
+      descripcion: 'No hay menú adjunto. Google muestra menús en Maps cuando los hay.',
+      accion_recomendada: 'Subir PDF del menú o crear menú digital en Google.',
+    },
+    {
+      area: 'Reseñas',
+      icono: 'Star',
+      impacto: 'alta',
+      descripcion: 'Solo 12 reseñas, puntuación 4.1/5. Competidor principal: 58 reseñas, 4.7/5.',
+      accion_recomendada: 'Solicitar reseñas en cada mesa. Responder amablemente a todas.',
+    },
+    {
+      area: 'Posts GBP',
+      icono: 'Code',
+      impacto: 'alta',
+      descripcion: 'Sin posts sobre ofertas, menú del día, eventos especiales.',
+      accion_recomendada: 'Publicar menú del día, ofertas happy hour, eventos, novedades.',
+    },
+    {
+      area: 'Horarios actualizados',
+      icono: 'Eye',
+      impacto: 'media',
+      descripcion: 'Cierres estacionales o especiales no registrados.',
+      accion_recomendada: 'Actualizar horarios con cierres navideños y vacaciones.',
+    },
+  ],
+  default: [
+    {
+      area: 'Fotos GBP',
+      icono: 'Camera',
+      impacto: 'alta',
+      descripcion: 'Perfil con pocas fotos (<5). Google prioriza perfiles visuales.',
+      accion_recomendada: 'Subir 15+ fotos profesionales del negocio, equipo, productos/servicios.',
+    },
+    {
+      area: 'Reseñas',
+      icono: 'Star',
+      impacto: 'alta',
+      descripcion: 'Pocas reseñas o puntuación baja respecto a competencia.',
+      accion_recomendada: 'Solicitar reseñas activamente. Responder a todas con profesionalismo.',
+    },
+    {
+      area: 'Posts GBP',
+      icono: 'FileText',
+      impacto: 'alta',
+      descripcion: 'Sin actividad de posts. Google recompensa perfiles actualizados.',
+      accion_recomendada: 'Publicar ofertas, novedades, eventos, tips de industria 2/semana.',
+    },
+    {
+      area: 'Descripción y categorías',
+      icono: 'Code',
+      impacto: 'media',
+      descripcion: 'Descripción genérica o categorías mal elegidas.',
+      accion_recomendada: 'Optimizar descripción con diferenciales. Seleccionar categorías exactas.',
+    },
+  ],
 }
-if (!globalThis._radarAuditStore) globalThis._radarAuditStore = new Map<string, AuditResult>()
-const AUDIT_STORE = globalThis._radarAuditStore
 
-// Emails del admin que pueden hacer auditorías ilimitadas
-const ADMIN_EMAILS = [
-  'iadivision@iadivision.es',
-  'luismigsm@gmail.com',
-  'luismigsm@hotmail.com',
-]
+// Mock audit store (in-memory for dev)
+// Usar globalThis para que persista entre recargas de HMR en dev
+const globalForAudit = globalThis as typeof globalThis & {
+  _radarAuditStore?: Map<string, AuditResult>
+}
+if (!globalForAudit._radarAuditStore) {
+  globalForAudit._radarAuditStore = new Map<string, AuditResult>()
+}
+const AUDIT_STORE = globalForAudit._radarAuditStore
 
-/**
- * Verifica si ya existe una auditoría con los mismos datos de contacto.
- * Comprueba email, teléfono, nombre_contacto y puesto.
- * Los admins están exentos.
- */
-export async function checkDuplicate(input: AuditInput): Promise<string | null> {
-  if (ADMIN_EMAILS.includes(input.email.toLowerCase())) return null
-
-  if (!supabaseAdmin) return null // sin Supabase no podemos verificar
-
-  // Buscar por email O teléfono O (nombre_contacto + puesto)
-  const { data, error } = await supabaseAdmin
-    .from('auditorias')
-    .select('id')
-    .or(`email.eq.${input.email},telefono.eq.${input.telefono},and(nombre_contacto.eq.${input.nombre_contacto},puesto.eq.${input.puesto})`)
-    .limit(1)
-
-  if (error) {
-    console.error('[audit] Error checking duplicate:', error.message)
-    return null // en caso de error, permitir (fail open)
-  }
-
-  if (data && data.length > 0) {
-    return 'Ya existe una auditoría con estos datos de contacto. Si necesitas otra auditoría, contacta con nosotros.'
-  }
-
-  return null
+function generateAuditId(): string {
+  return `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
-export async function runAudit(input: AuditInput): Promise<AuditResult> {
-  // Simular latencia de procesamiento
-  await new Promise((r) => setTimeout(r, 800 + Math.random() * 600))
+function getRandomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
 
-  const id = `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+function getCompetitorScore(clientScore: number): number {
+  // Competitors always score 10-30 points higher
+  return Math.min(100, clientScore + getRandomInt(10, 30))
+}
 
-  // Puntuación base del negocio (simulada según categoría)
-  const puntuacionBase = 30 + Math.floor(Math.random() * 25)
-
-  // Generar 2 competidores — usa nombres reales si el usuario los proporcionó
-  const competidores = generarCompetidores(input.categoria, input.zona, input.competidor1, input.competidor2)
-
-  // Detectar gaps
-  const gaps = generarGaps(puntuacionBase)
-
-  // Generar dimensiones para gráficos
-  const dimensiones = generarDimensiones(puntuacionBase)
-
-  // Recomendar pack según puntuación
-  const recomendacion_pack =
-    puntuacionBase < 40 ? 'autoridad_maps_ia' : 'visibilidad_local'
-
+export async function runAudit(formData: AuditFormData): Promise<AuditResult> {
+  const id = generateAuditId()
+  
+  // Client baseline score based on category
+  const clientBaseScore = getRandomInt(25, 65)
+  
+  // Competitors score higher
+  const competitor1Score = getCompetitorScore(clientBaseScore)
+  const competitor2Score = getCompetitorScore(clientBaseScore)
+  
+  // Select gaps based on category
+  const categoryKey = formData.categoria?.toLowerCase() || 'default'
+  const categoryGaps = GAPS_POR_CATEGORIA[categoryKey] || GAPS_POR_CATEGORIA.default
+  
+  // Randomly select 4-5 gaps
+  const gapCount = getRandomInt(4, 5)
+  const gaps = categoryGaps
+    .sort(() => Math.random() - 0.5)
+    .slice(0, gapCount)
+  
+  // Determine recommended pack based on client score
+  const recomendacion_pack = clientBaseScore < 50 ? 'visibilidad_local' : 'autoridad_maps_ia'
+  
   const result: AuditResult = {
     id,
     negocio: {
-      nombre: input.nombre_negocio,
-      direccion: input.direccion,
-      zona: input.zona,
-      categoria: input.categoria,
-      puntuacion: puntuacionBase,
+      nombre: formData.nombre_negocio,
+      direccion: formData.direccion,
+      zona: formData.zona,
+      categoria: formData.categoria,
+      puntuacion: clientBaseScore,
+      fotos_count: getRandomInt(2, 8),
+      resenas_count: getRandomInt(1, 20),
+      posts_gbp: getRandomInt(0, 5),
+      horarios_completos: Math.random() > 0.5,
     },
-    email: input.email,
-    competidores,
+    competidores: [
+      {
+        nombre: formData.competidor1 || 'Competidor 1 (Maps)',
+        puntuacion: competitor1Score,
+        ventajas: [
+          `${competitor1Score - clientBaseScore} puntos más en puntuación`,
+          `Más fotos (${getRandomInt(15, 30)} vs ${getRandomInt(2, 8)})`,
+          `${getRandomInt(2, 5)} posts mensuales (actualizados)`,
+        ],
+        debilidades: Math.random() > 0.5 ? ['Reseñas desactualizadas', 'Horarios incorrectos'] : ['Descripción genérica'],
+        diferencia_puntos: competitor1Score - clientBaseScore,
+      },
+      {
+        nombre: formData.competidor2 || 'Competidor 2 (Maps)',
+        puntuacion: competitor2Score,
+        ventajas: [
+          `${competitor2Score - clientBaseScore} puntos más en puntuación`,
+          `${getRandomInt(30, 60)} reseñas (verificadas)`,
+          `Presencia activa (posts semanales)`,
+        ],
+        debilidades: Math.random() > 0.5 ? ['Ubicación menos central', 'Horario más limitado'] : ['Atributos incompletos'],
+        diferencia_puntos: competitor2Score - clientBaseScore,
+      },
+    ],
     gaps,
-    dimensiones,
     recomendacion_pack,
+    resumen: `Tu negocio tiene una puntuación de ${clientBaseScore}/100 en Google Maps. Tus competidores obtienen ${Math.round((competitor1Score + competitor2Score) / 2)} puntos. Con un enfoque en ${gaps[0]?.area.toLowerCase() || 'mejora'}, podrías escalar rápidamente.`,
     created_at: new Date().toISOString(),
+    // Guardar datos de contacto del formulario
+    email: formData.email,
+    nombre_contacto: formData.nombre_contacto,
+    puesto: formData.puesto,
+    telefono: formData.telefono,
   }
 
-  // Persistir en Supabase si disponible, sino en memoria
-  // IMPORTANTE: Usamos SOLO supabaseAdmin (service_role) para INSERT
-  // La clave anon NO tiene permisos de escritura (bloqueada por RLS)
-  if (supabaseAdmin) {
-    const { error } = await supabaseAdmin.from('auditorias').insert({
-      id: result.id,
-      nombre_negocio: result.negocio.nombre,
-      direccion: result.negocio.direccion,
-      zona: result.negocio.zona,
-      categoria: result.negocio.categoria,
-      nombre_contacto: input.nombre_contacto,
-      puesto: input.puesto,
-      telefono: input.telefono,
-      email: input.email,
-      puntuacion: result.negocio.puntuacion,
+  // Guardar en Supabase si disponible, sino in-memory
+  if (supabase) {
+    const { error } = await supabase.from('auditorias').insert({
+      id,
+      nombre_negocio: formData.nombre_negocio,
+      direccion: formData.direccion,
+      zona: formData.zona,
+      categoria: formData.categoria,
+      puntuacion: clientBaseScore,
       competidores: result.competidores,
       gaps: result.gaps,
-      dimensiones: result.dimensiones,
-      recomendacion_pack: result.recomendacion_pack,
+      recomendacion_pack,
+      email: formData.email || '',
+      nombre_contacto: formData.nombre_contacto || '',
+      puesto: formData.puesto || '',
+      telefono: formData.telefono || '',
     })
     if (error) {
-      console.error('[audit] Supabase insert error, fallback in-memory:', error.message)
+      console.error('[audit] Error guardando en Supabase:', error)
+      // Fallback a in-memory
       AUDIT_STORE.set(id, result)
     }
   } else {
@@ -171,6 +288,37 @@ export async function runAudit(input: AuditInput): Promise<AuditResult> {
   }
 
   return result
+}
+
+// Reconstruir AuditResult desde fila de Supabase
+function rowToAuditResult(row: Record<string, unknown>): AuditResult {
+  const competidores = row.competidores as CompetidorAuditoria[]
+  const gaps = row.gaps as GapAuditoria[]
+  const puntuacion = row.puntuacion as number
+
+  return {
+    id: row.id as string,
+    negocio: {
+      nombre: row.nombre_negocio as string,
+      direccion: row.direccion as string,
+      zona: row.zona as string,
+      categoria: row.categoria as string,
+      puntuacion,
+      fotos_count: 0,
+      resenas_count: 0,
+      posts_gbp: 0,
+      horarios_completos: false,
+    },
+    competidores,
+    gaps,
+    recomendacion_pack: row.recomendacion_pack as 'visibilidad_local' | 'autoridad_maps_ia',
+    resumen: `Tu negocio tiene una puntuación de ${puntuacion}/100 en Google Maps.`,
+    created_at: (row.created_at as string) || new Date().toISOString(),
+    email: (row.email as string) || '',
+    nombre_contacto: (row.nombre_contacto as string) || '',
+    puesto: (row.puesto as string) || '',
+    telefono: (row.telefono as string) || '',
+  }
 }
 
 export async function getAuditById(id: string): Promise<AuditResult | null> {
@@ -183,167 +331,40 @@ export async function getAuditById(id: string): Promise<AuditResult | null> {
       .single()
 
     if (!error && data) {
-      return {
-        id: data.id,
-        negocio: {
-          nombre: data.nombre_negocio,
-          direccion: data.direccion,
-          zona: data.zona,
-          categoria: data.categoria,
-          puntuacion: data.puntuacion,
-        },
-        email: data.email ?? '',
-        nombre_contacto: data.nombre_contacto ?? undefined,
-        puesto: data.puesto ?? undefined,
-        telefono: data.telefono ?? undefined,
-        competidores: data.competidores as AuditCompetidor[],
-        gaps: data.gaps as AuditGap[],
-        dimensiones: (data.dimensiones as AuditDimension[]) ?? [],
-        recomendacion_pack: data.recomendacion_pack as AuditResult['recomendacion_pack'],
-        created_at: data.created_at,
-      }
+      return rowToAuditResult(data)
     }
-    // Si no se encuentra en Supabase, probar fallback
     if (error) {
-      console.error('[audit] Supabase select error, fallback in-memory:', error.message)
+      console.error('[audit] Error leyendo de Supabase:', error)
     }
   }
 
-  return AUDIT_STORE.get(id) ?? null
+  // Fallback a in-memory
+  return AUDIT_STORE.get(id) || null
 }
 
-// --- Helpers de generación mock ---
-
-function generarCompetidores(
-  categoria: string,
-  zona: string,
-  competidor1?: string,
-  competidor2?: string,
-): AuditCompetidor[] {
-  // Si el usuario proporcionó nombres, usarlos
-  // Si no, generar nombres genéricos por categoría
-  const nombresFallback: Record<string, string[]> = {
-    'clinica dental': ['Dental Plus', 'Clínica Sonríe'],
-    fisioterapia: ['FisioVital', 'Centro Fisio Salud'],
-    veterinaria: ['Clínica Veterinaria Luna', 'VetSalud 24h'],
-    peluqueria: ['Estilo & Corte', 'Hair Studio Pro'],
-    restaurante: ['La Buena Mesa', 'Sabores del Barrio'],
-  }
-
-  const fallback = nombresFallback[categoria.toLowerCase()] ?? [
-    `${categoria} Premium`,
-    `${categoria} Centro`,
-  ]
-
-  const nombre1 = competidor1 || `${fallback[0]} (${zona})`
-  const nombre2 = competidor2 || `${fallback[1]} (${zona})`
-
-  return [
-    {
-      nombre: nombre1,
-      puntuacion: 68 + Math.floor(Math.random() * 15),
-      ventajas: [
-        'Perfil GBP completo con fotos actualizadas semanalmente',
-        'Responde a todas las reseñas en menos de 24h',
-        'Publica posts semanales en Google Business',
-        'Web optimizada con contenido local de calidad',
-      ],
-      debilidades: [
-        'Sin schema markup en la web',
-        'No aparece en búsquedas por voz ni en IAs',
-      ],
-    },
-    {
-      nombre: nombre2,
-      puntuacion: 60 + Math.floor(Math.random() * 18),
-      ventajas: [
-        'NAP consistente en todos los directorios',
-        'Buena puntuación de reseñas (4.6★)',
-        'Categoría GBP correctamente configurada',
-      ],
-      debilidades: [
-        'Pocas fotos en el perfil de Google',
-        'Sin FAQ optimizadas para IAs generativas',
-        'Web sin contenido local ni blog',
-      ],
-    },
-  ]
-}
-
-function generarDimensiones(puntuacionBase: number): AuditDimension[] {
-  // Generar puntuaciones por dimensión para cada actor
-  // Tu negocio: débil en la mayoría, competidores más fuertes
-  const dims = ['Fotos GBP', 'Reseñas', 'Posts GBP', 'Schema Web', 'NAP', 'SEO Local']
-  return dims.map((dimension) => {
-    // Tu negocio: puntuación baja correlacionada con la puntuación general
-    const base = puntuacionBase
-    const tuScore = Math.max(10, Math.min(95, base + Math.floor(Math.random() * 20) - 10))
-    // Competidores: generalmente más altos
-    const c1Score = Math.max(30, Math.min(95, 65 + Math.floor(Math.random() * 25)))
-    const c2Score = Math.max(25, Math.min(90, 55 + Math.floor(Math.random() * 30)))
-    return {
-      dimension,
-      tu_negocio: tuScore,
-      competidor1: c1Score,
-      competidor2: c2Score,
+export async function saveAudit(result: AuditResult): Promise<string> {
+  if (supabase) {
+    const { error } = await supabase.from('auditorias').upsert({
+      id: result.id,
+      nombre_negocio: result.negocio.nombre,
+      direccion: result.negocio.direccion,
+      zona: result.negocio.zona,
+      categoria: result.negocio.categoria,
+      puntuacion: result.negocio.puntuacion,
+      competidores: result.competidores,
+      gaps: result.gaps,
+      recomendacion_pack: result.recomendacion_pack,
+      email: result.email || '',
+      nombre_contacto: result.nombre_contacto || '',
+      puesto: result.puesto || '',
+      telefono: result.telefono || '',
+    })
+    if (error) {
+      console.error('[audit] Error en saveAudit Supabase:', error)
+      AUDIT_STORE.set(result.id, result)
     }
-  })
-}
-
-function generarGaps(puntuacion: number): AuditGap[] {
-  const todosGaps: AuditGap[] = [
-    {
-      area: 'Fotos GBP',
-      impacto: 'alto',
-      descripcion:
-        'Tu perfil tiene pocas fotos o desactualizadas. Los negocios con +10 fotos reciben 42% más solicitudes de ruta.',
-      icono: 'Camera',
-    },
-    {
-      area: 'Reseñas sin responder',
-      impacto: 'alto',
-      descripcion:
-        'Hay reseñas sin respuesta. Google premia los negocios que responden activamente a sus reseñas.',
-      icono: 'Star',
-    },
-    {
-      area: 'Posts GBP inactivos',
-      impacto: 'alto',
-      descripcion:
-        'No publicas posts en Google Business. Los negocios activos tienen 2x más visibilidad en Maps.',
-      icono: 'FileText',
-    },
-    {
-      area: 'Schema Markup',
-      impacto: 'medio',
-      descripcion:
-        'Tu web no tiene schema LocalBusiness. Esto impide que Google entienda tu negocio para resultados enriquecidos.',
-      icono: 'Code',
-    },
-    {
-      area: 'Presencia en LLMs',
-      impacto: 'medio',
-      descripcion:
-        'Tu negocio no aparece cuando se pregunta a ChatGPT o Gemini por tu categoría en tu zona.',
-      icono: 'Eye',
-    },
-    {
-      area: 'NAP inconsistente',
-      impacto: 'medio',
-      descripcion:
-        'El nombre, dirección y teléfono no coinciden en todos los directorios. Esto confunde a Google.',
-      icono: 'MapPin',
-    },
-    {
-      area: 'Keywords locales',
-      impacto: 'bajo',
-      descripcion:
-        'No estás optimizando para las búsquedas locales más frecuentes de tu zona y categoría.',
-      icono: 'Search',
-    },
-  ]
-
-  // Más gaps si peor puntuación
-  const numGaps = puntuacion < 35 ? 6 : puntuacion < 45 ? 5 : 4
-  return todosGaps.slice(0, numGaps)
+  } else {
+    AUDIT_STORE.set(result.id, result)
+  }
+  return result.id
 }

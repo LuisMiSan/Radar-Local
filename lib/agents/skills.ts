@@ -204,6 +204,8 @@ export const AGENT_SKILLS = {
 - Próximos pasos: 3 acciones priorizadas para el próximo mes
 - Incluir métricas concretas con fuente de dato
 `.trim(),
+
+  supervisor: '',
 }
 
 // ── COMPOSICIÓN: qué skills usa cada agente ─────────────────
@@ -222,6 +224,7 @@ const AGENT_SKILL_MAP: Record<Agente, SkillKey[]> = {
   tldr_entidad: ['optimizar_para_llms', 'formato_profesional'],
   monitor_ias: ['optimizar_para_llms', 'formato_profesional'],
   generador_reporte: ['calcular_puntuacion', 'formato_profesional'],
+  supervisor: [],
 }
 
 /** Obtiene los skills compartidos asignados a un agente */

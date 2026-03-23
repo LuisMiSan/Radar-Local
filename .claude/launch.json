@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "radar-local",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "C:/Users/USER/radar-local/node_modules/.bin/next.cmd",
+      "runtimeArgs": ["dev"],
       "port": 3000
     }
   ]

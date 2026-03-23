@@ -32,9 +32,10 @@ const gapIcons: Record<string, LucideIcon> = {
 }
 
 const impactoColor: Record<string, { bg: string; text: string; label: string; bar: string }> = {
-  alto: { bg: 'bg-red-50', text: 'text-red-600', label: 'Impacto alto', bar: 'bg-red-500' },
-  medio: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Impacto medio', bar: 'bg-amber-500' },
-  bajo: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Impacto bajo', bar: 'bg-blue-500' },
+  critica: { bg: 'bg-red-50', text: 'text-red-600', label: 'Impacto crítico', bar: 'bg-red-500' },
+  alta: { bg: 'bg-orange-50', text: 'text-orange-600', label: 'Impacto alto', bar: 'bg-orange-500' },
+  media: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Impacto medio', bar: 'bg-amber-500' },
+  baja: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Impacto bajo', bar: 'bg-blue-500' },
 }
 
 function PuntuacionCircle({
@@ -85,73 +86,6 @@ function PuntuacionCircle({
         <span className={`${fontSize} font-bold text-neutral-900`}>
           {puntuacion}
         </span>
-      </div>
-    </div>
-  )
-}
-
-/** Barra de comparación visual simple */
-function ComparisonBar({
-  label,
-  tuScore,
-  comp1Score,
-  comp2Score,
-  comp1Name,
-  comp2Name,
-}: {
-  label: string
-  tuScore: number
-  comp1Score: number
-  comp2Score: number
-  comp1Name: string
-  comp2Name: string
-}) {
-  const barColor = (score: number) =>
-    score >= 70 ? 'bg-green-500' : score >= 50 ? 'bg-amber-400' : 'bg-red-500'
-
-  return (
-    <div className="py-4 border-b border-neutral-50 last:border-0">
-      <p className="text-sm font-semibold text-neutral-800 mb-3">{label}</p>
-      <div className="space-y-2">
-        {/* Tu negocio */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-500 w-10 text-right font-medium">Tú</span>
-          <div className="flex-1 bg-neutral-100 rounded-full h-5 relative overflow-hidden">
-            <div
-              className={`h-5 rounded-full ${barColor(tuScore)} transition-all duration-700`}
-              style={{ width: `${tuScore}%` }}
-            />
-            <span className="absolute inset-y-0 right-2 flex items-center text-[11px] font-bold text-neutral-700">
-              {tuScore}
-            </span>
-          </div>
-        </div>
-        {/* Competidor 1 */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-400 w-10 text-right truncate" title={comp1Name}>C1</span>
-          <div className="flex-1 bg-neutral-100 rounded-full h-3.5 relative overflow-hidden">
-            <div
-              className="h-3.5 rounded-full bg-blue-400/70 transition-all duration-700"
-              style={{ width: `${comp1Score}%` }}
-            />
-            <span className="absolute inset-y-0 right-2 flex items-center text-[10px] font-medium text-neutral-500">
-              {comp1Score}
-            </span>
-          </div>
-        </div>
-        {/* Competidor 2 */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-400 w-10 text-right truncate" title={comp2Name}>C2</span>
-          <div className="flex-1 bg-neutral-100 rounded-full h-3.5 relative overflow-hidden">
-            <div
-              className="h-3.5 rounded-full bg-indigo-400/70 transition-all duration-700"
-              style={{ width: `${comp2Score}%` }}
-            />
-            <span className="absolute inset-y-0 right-2 flex items-center text-[10px] font-medium text-neutral-500">
-              {comp2Score}
-            </span>
-          </div>
-        </div>
       </div>
     </div>
   )
@@ -326,46 +260,6 @@ export default function AuditoriaResultsPage() {
           )}
         </div>
 
-        {/* Comparativa por área — barras claras */}
-        {(result.dimensiones ?? []).length > 0 && (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-8 mb-8">
-            <h2 className="text-lg font-semibold text-primary mb-2">
-              Comparativa por área
-            </h2>
-            <p className="text-sm text-neutral-500 mb-2">
-              Tu puntuación vs competidores en cada dimensión clave
-            </p>
-            {/* Leyenda */}
-            <div className="flex flex-wrap gap-4 mb-4 text-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-500" />
-                <span className="text-neutral-600 font-medium">Tú &mdash; {result.negocio.nombre}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-blue-400" />
-                <span className="text-neutral-500">C1 &mdash; {comp1Name}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-indigo-400" />
-                <span className="text-neutral-500">C2 &mdash; {comp2Name}</span>
-              </div>
-            </div>
-            {/* Barras */}
-            <div>
-              {result.dimensiones.map((dim) => (
-                <ComparisonBar
-                  key={dim.dimension}
-                  label={dim.dimension}
-                  tuScore={dim.tu_negocio}
-                  comp1Score={dim.competidor1}
-                  comp2Score={dim.competidor2}
-                  comp1Name={comp1Name}
-                  comp2Name={comp2Name}
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Gaps detectados */}
         <div className="bg-white rounded-2xl border border-neutral-100 p-8 mb-8">
@@ -386,7 +280,7 @@ export default function AuditoriaResultsPage() {
             {result.gaps.map((gap) => {
               const Icon = gapIcons[gap.icono] ?? AlertTriangle
               const impacto = impactoColor[gap.impacto]
-              const urgencia = gap.impacto === 'alto' ? 90 : gap.impacto === 'medio' ? 60 : 35
+              const urgencia = gap.impacto === 'alta' ? 90 : gap.impacto === 'media' ? 60 : 35
               return (
                 <div
                   key={gap.area}

@@ -99,6 +99,16 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     packs: ['autoridad_maps_ia'],
     categoria: 'reporte',
   },
+
+  // ── Supervisor (Orquestador) ───────────────────────────
+  {
+    id: 'supervisor',
+    nombre: 'Supervisor',
+    descripcion: 'Orquestador que ejecuta automáticamente todos los agentes en secuencia óptima para un cliente. Genera análisis completo.',
+    icono: 'Brain',
+    packs: ['visibilidad_local', 'autoridad_maps_ia'],
+    categoria: 'supervisor',
+  },
 ]
 
 // Helper: obtener config por id
@@ -112,5 +122,6 @@ export function getAgentsByCategory() {
     map_pack: AGENT_CONFIGS.filter((a) => a.categoria === 'map_pack'),
     geo_aeo: AGENT_CONFIGS.filter((a) => a.categoria === 'geo_aeo'),
     reporte: AGENT_CONFIGS.filter((a) => a.categoria === 'reporte'),
+    supervisor: AGENT_CONFIGS.filter((a) => a.categoria === 'supervisor'),
   }
 }

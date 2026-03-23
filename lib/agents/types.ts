@@ -49,7 +49,7 @@ export interface AgentResult {
 export type AgentRunner = (input: AgentInput) => Promise<AgentResult>
 
 // Categorías de agentes (NO SEO genérico)
-export type AgentCategory = 'map_pack' | 'geo_aeo' | 'reporte'
+export type AgentCategory = 'map_pack' | 'geo_aeo' | 'reporte' | 'supervisor'
 
 // Metadata de configuración de cada agente
 export interface AgentConfig {

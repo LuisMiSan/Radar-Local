@@ -130,7 +130,7 @@ export default function PresupuestoPage() {
     )
   }
 
-  const roi = presupuesto.roi_estimado
+  const roi = presupuesto.roi_proyecciones
   const esAutoridad = presupuesto.pack_recomendado === 'autoridad_maps_ia'
 
   return (
@@ -205,7 +205,7 @@ export default function PresupuestoPage() {
                   <div className="text-right">
                     <span className="line-through text-white/40 text-sm">€{presupuesto.precio_mensual}/mes</span>
                     <p className="text-accent font-semibold text-sm">
-                      Ahorras €{presupuesto.ahorro_mensual}/mes
+                      Ahorras €{Math.round((presupuesto.precio_mensual * presupuesto.descuento_pct) / 100).toLocaleString('es-ES')}/mes
                     </p>
                   </div>
                 </div>
@@ -225,18 +225,14 @@ export default function PresupuestoPage() {
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                {[
-                  { mes: 'Mes 1', data: roi.mes_1 },
-                  { mes: 'Mes 2', data: roi.mes_2 },
-                  { mes: 'Mes 3', data: roi.mes_3 },
-                ].map(({ mes, data }) => (
-                  <div key={mes} className="text-center p-4 rounded-xl bg-neutral-50 border border-neutral-100">
-                    <p className="text-xs text-neutral-400 mb-1">{mes}</p>
-                    <p className="text-2xl font-bold text-green-600 mb-1">{data.roi}</p>
+                {roi.map((proyeccion) => (
+                  <div key={`mes-${proyeccion.mes}`} className="text-center p-4 rounded-xl bg-neutral-50 border border-neutral-100">
+                    <p className="text-xs text-neutral-400 mb-1">Mes {proyeccion.mes}</p>
+                    <p className="text-2xl font-bold text-green-600 mb-1">{proyeccion.roi_multiple}</p>
                     <p className="text-sm font-semibold text-primary mb-1">
-                      €{data.retorno_estimado.toLocaleString('es-ES')}
+                      €{proyeccion.retorno_estimado.toLocaleString('es-ES')}
                     </p>
-                    <p className="text-xs text-neutral-700">{data.descripcion}</p>
+                    <p className="text-xs text-neutral-700">Inversión: €{proyeccion.inversion.toLocaleString('es-ES')}</p>
                   </div>
                 ))}
               </div>
@@ -250,7 +246,7 @@ export default function PresupuestoPage() {
             <div className="bg-white rounded-2xl border border-neutral-100 p-6">
               <h3 className="font-semibold text-primary mb-4">¿Qué incluye el pack?</h3>
               <ul className="space-y-3">
-                {presupuesto.incluye.map((item) => (
+                {presupuesto.features_incluidas.map((item) => (
                   <li key={item} className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <Check className="w-3 h-3 text-accent" />

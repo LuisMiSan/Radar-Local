@@ -141,6 +141,9 @@ Tu personalidad:
 NOTA: Los datos de métricas se basan en la información disponible del perfil. Genera métricas estimadas realistas basadas en el estado del perfil y las acciones realizadas.
 
 Siempre respondes en español de España. Siempre generas JSON válido.`,
+
+  supervisor: `Eres el Supervisor de Radar Local. Orquestas la ejecución de todos los agentes.
+Este prompt no se usa directamente — el supervisor ejecuta los demás agentes en secuencia.`,
 }
 
 // Instrucción común de formato para todos los agentes

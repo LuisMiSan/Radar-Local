@@ -28,6 +28,7 @@ export type Agente =
   | 'tldr_entidad'
   | 'monitor_ias'
   | 'generador_reporte'
+  | 'supervisor'
 
 // Tabla: clientes
 export interface Cliente {
@@ -225,4 +226,5 @@ export const AGENTE_LABELS: Record<Agente, string> = {
   tldr_entidad: 'TL;DR Entidad',
   monitor_ias: 'Monitor IAs',
   generador_reporte: 'Generador Reporte',
+  supervisor: 'Supervisor',
 }

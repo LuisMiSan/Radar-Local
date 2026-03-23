@@ -173,6 +173,7 @@ function generarResumen(
       return `Monitor IA de ${nombre}: ${presencia}`
     },
     generador_reporte: () => `Reporte mensual generado para ${nombre}.`,
+    supervisor: () => `Análisis completo ejecutado para ${nombre}.`,
   }
 
   return resumenMap[agente]()

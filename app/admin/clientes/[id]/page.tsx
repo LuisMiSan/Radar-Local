@@ -8,6 +8,7 @@ import { getProfileByClient } from '@/lib/profiles'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { generatePortalToken } from '@/lib/portal'
+import GbpConnection from '@/components/admin/gbp-connection'
 
 interface PageProps {
   params: { id: string }
@@ -48,6 +49,11 @@ export default async function ClienteDetailPage({ params }: PageProps) {
             email={client.email}
             portalToken={portalToken}
           />
+        </div>
+
+        {/* Conexión Google Business Profile */}
+        <div className="mb-6">
+          <GbpConnection clienteId={client.id} clienteNombre={client.nombre} />
         </div>
 
         <ClientDetail client={client} tasks={tasks} profile={profile} />

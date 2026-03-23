@@ -51,6 +51,7 @@ const AGENT_KNOWLEDGE: Record<Agente, KnowledgeFile[]> = {
   tldr_entidad:      ['geo-aeo-fundamentals', 'local-seo-spain'],
   monitor_ias:       ['geo-aeo-fundamentals', 'local-seo-spain'],
   generador_reporte: ['map-pack-ranking', 'geo-aeo-fundamentals', 'local-seo-spain'],
+  supervisor:        [],
 }
 
 // ── Tarea específica de cada agente ─────────────────────────
@@ -236,6 +237,8 @@ Responde SOLO en JSON válido:
   "metricas_map_pack": {"posicion_maps": {"anterior": number, "actual": number, "variacion": string}, "visitas_ficha": {"anterior": number, "actual": number, "variacion": string}, "llamadas": {"anterior": number, "actual": number, "variacion": string}, "nap_consistencia": {"anterior": string, "actual": string, "variacion": string}},
   "metricas_geo_aeo": {"plataformas_presencia": string, "posicion_gemini": number, "posicion_perplexity": number, "schemas_implementados": number, "faqs_indexadas": number}
 }`,
+
+  supervisor: `El supervisor no genera prompts directamente — orquesta los demás agentes.`,
 }
 
 // ── Función pública: construir el USER prompt completo ──────

@@ -21,6 +21,7 @@ import {
   Hand,
   Zap,
   Loader2,
+  Brain,
 } from 'lucide-react'
 import type {
   TareaEjecucion,
@@ -151,6 +152,18 @@ export default function TareasPanel({ clients }: TareasPanelProps) {
   const [ejecutandoId, setEjecutandoId] = useState<string | null>(null)
   const [ejecutandoTodas, setEjecutandoTodas] = useState(false)
 
+  // Supervisor state
+  const [supervisorRunning, setSupervisorRunning] = useState(false)
+  const [supervisorResult, setSupervisorResult] = useState<{
+    estado: string
+    completados: number
+    errores: number
+    total: number
+    coste_total: number
+    tareas_generadas: number
+    resumen: string
+  } | null>(null)
+
   async function handleEjecutar(tareaId: string) {
     setEjecutandoId(tareaId)
     try {
@@ -194,6 +207,42 @@ export default function TareasPanel({ clients }: TareasPanelProps) {
       console.error('Error ejecutando todas:', err)
     } finally {
       setEjecutandoTodas(false)
+    }
+  }
+
+  // ── Supervisor: análisis completo ─────────────────────────
+
+  async function handleSupervisor() {
+    if (!selectedClient) return
+    setSupervisorRunning(true)
+    setSupervisorResult(null)
+    try {
+      const res = await fetch('/api/agents/supervisor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_id: selectedClient }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        setSupervisorResult({
+          estado: data.estado,
+          completados: data.completados,
+          errores: data.errores,
+          total: data.total,
+          coste_total: data.coste_total,
+          tareas_generadas: data.tareas_generadas,
+          resumen: data.resumen,
+        })
+        await loadTareas()
+      } else {
+        alert(`Error: ${data.error}`)
+      }
+    } catch (err) {
+      console.error('Error ejecutando supervisor:', err)
+      alert('Error al ejecutar el análisis completo')
+    } finally {
+      setSupervisorRunning(false)
     }
   }
 
@@ -488,6 +537,97 @@ export default function TareasPanel({ clients }: TareasPanelProps) {
           )}
         </div>
       </div>
+
+      {/* Botón Supervisor — Análisis completo */}
+      {selectedClient && !loading && (
+        <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl border border-violet-200 p-5">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-violet-100 rounded-xl">
+                <Brain className="w-6 h-6 text-violet-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-neutral-900 text-sm">Supervisor — Análisis Completo</h3>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Ejecuta los 11 agentes en secuencia. Genera diagnóstico + tareas para todo el perfil.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleSupervisor}
+              disabled={supervisorRunning}
+              className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors shadow-sm whitespace-nowrap"
+            >
+              {supervisorRunning ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Ejecutando análisis...
+                </>
+              ) : (
+                <>
+                  <Brain className="w-4 h-4" />
+                  Lanzar análisis completo
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Resultado del supervisor */}
+          {supervisorResult && (
+            <div className={`mt-4 p-4 rounded-lg ${
+              supervisorResult.estado === 'completada'
+                ? 'bg-green-50 border border-green-200'
+                : supervisorResult.estado === 'parcial'
+                  ? 'bg-amber-50 border border-amber-200'
+                  : 'bg-red-50 border border-red-200'
+            }`}>
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle2 className={`w-4 h-4 ${
+                  supervisorResult.estado === 'completada' ? 'text-green-600' : 'text-amber-600'
+                }`} />
+                <span className="font-medium text-sm">
+                  {supervisorResult.estado === 'completada' ? 'Análisis completado' : 'Análisis parcial'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-neutral-500">Agentes:</span>{' '}
+                  <span className="font-medium">{supervisorResult.completados}/{supervisorResult.total}</span>
+                </div>
+                <div>
+                  <span className="text-neutral-500">Tareas generadas:</span>{' '}
+                  <span className="font-medium">{supervisorResult.tareas_generadas}</span>
+                </div>
+                <div>
+                  <span className="text-neutral-500">Errores:</span>{' '}
+                  <span className="font-medium">{supervisorResult.errores}</span>
+                </div>
+                <div>
+                  <span className="text-neutral-500">Coste total:</span>{' '}
+                  <span className="font-medium">${supervisorResult.coste_total.toFixed(4)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Indicador de progreso mientras ejecuta */}
+          {supervisorRunning && (
+            <div className="mt-4 p-4 bg-white/60 rounded-lg border border-violet-100">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin text-violet-600" />
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">
+                    Ejecutando los 11 agentes en secuencia...
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    Esto puede tardar 1-3 minutos. No cierres la página.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Sin cliente seleccionado */}
       {!selectedClient && (

@@ -1,114 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { runAudit, getAuditById, checkDuplicate } from '@/lib/audit'
+import { runAudit, saveAudit, getAuditById } from '@/lib/audit'
+import type { AuditFormData } from '@/lib/audit'
 
-// --- Helpers de validación ---
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
 
-// Limpia un string: quita espacios extra y limita longitud
-function sanitize(value: unknown, maxLength: number): string {
-  if (typeof value !== 'string') return ''
-  return value.trim().slice(0, maxLength)
-}
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Falta parámetro: id' },
+        { status: 400 }
+      )
+    }
 
-// Valida formato básico de email
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
+    const auditResult = await getAuditById(id)
 
-// Valida formato de ID de auditoría (audit_TIMESTAMP_RANDOM)
-function isValidAuditId(id: string): boolean {
-  return /^audit_\d+_[a-z0-9]+$/.test(id)
-}
+    if (!auditResult) {
+      return NextResponse.json(
+        { error: 'Auditoría no encontrada' },
+        { status: 404 }
+      )
+    }
 
-export async function GET(request: NextRequest) {
-  const id = request.nextUrl.searchParams.get('id')
-  if (!id) {
-    return NextResponse.json({ error: 'Falta el parámetro id' }, { status: 400 })
-  }
-
-  // Validar formato del ID para evitar inyección
-  if (!isValidAuditId(id)) {
-    return NextResponse.json({ error: 'Formato de ID inválido' }, { status: 400 })
-  }
-
-  const result = await getAuditById(id)
-  if (!result) {
+    return NextResponse.json(auditResult, { status: 200 })
+  } catch (error) {
+    console.error('[API /audit GET] Error:', error)
     return NextResponse.json(
-      { error: 'Auditoría no encontrada' },
-      { status: 404 }
+      { error: 'Error al recuperar la auditoría' },
+      { status: 500 }
     )
   }
-  return NextResponse.json(result)
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await req.json()
 
-    // Sanitizar inputs: quitar espacios y limitar longitud
-    const nombre_negocio = sanitize(body.nombre_negocio, 200)
-    const direccion = sanitize(body.direccion, 300)
-    const zona = sanitize(body.zona, 100)
-    const categoria = sanitize(body.categoria, 100)
-    const nombre_contacto = sanitize(body.nombre_contacto, 200)
-    const puesto = sanitize(body.puesto, 100)
-    const telefono = sanitize(body.telefono, 20)
-    const email = sanitize(body.email, 254)
+    // Validar campos requeridos
+    const { nombre_negocio, categoria, direccion, zona, nombre_contacto, puesto, email, telefono, competidor1, competidor2 } = body
 
-    // Validar campos obligatorios
-    if (!nombre_negocio || !direccion || !zona || !categoria ||
-        !nombre_contacto || !puesto || !telefono || !email) {
+    if (!nombre_negocio || !categoria || !direccion || !zona || !email) {
       return NextResponse.json(
-        { error: 'Todos los campos marcados con * son obligatorios' },
+        { error: 'Faltan campos requeridos (nombre_negocio, categoria, direccion, zona, email)' },
         { status: 400 }
       )
     }
 
-    // Validar email
-    if (!isValidEmail(email)) {
-      return NextResponse.json(
-        { error: 'El formato del email no es válido' },
-        { status: 400 }
-      )
-    }
-
-    // Sanitizar campos opcionales (competidores)
-    const competidor1 = sanitize(body.competidor1, 200)
-    const competidor2 = sanitize(body.competidor2, 200)
-
-    // Verificar duplicados (1 auditoría por persona, excepto admin)
-    const duplicateMsg = await checkDuplicate({
+    // Construir AuditFormData
+    const formData: AuditFormData = {
       nombre_negocio,
+      categoria,
       direccion,
       zona,
-      categoria,
-      nombre_contacto,
-      puesto,
-      telefono,
+      nombre_contacto: nombre_contacto || '',
+      puesto: puesto || '',
       email,
-    })
-    if (duplicateMsg) {
-      return NextResponse.json(
-        { error: duplicateMsg },
-        { status: 409 }
-      )
+      telefono: telefono || '',
+      competidor1: competidor1 || 'Competidor 1',
+      competidor2: competidor2 || 'Competidor 2',
     }
 
-    const result = await runAudit({
-      nombre_negocio,
-      direccion,
-      zona,
-      categoria,
-      nombre_contacto,
-      puesto,
-      telefono,
-      email,
-      competidor1: competidor1 || undefined,
-      competidor2: competidor2 || undefined,
-    })
+    // Ejecutar auditoría
+    const auditResult = await runAudit(formData)
 
-    return NextResponse.json({ id: result.id }, { status: 201 })
+    // Guardar en Supabase (o in-memory como fallback)
+    const auditId = await saveAudit(auditResult)
+
+    // Devolver audit ID para redirección
+    return NextResponse.json(
+      {
+        success: true,
+        id: auditId,
+        message: 'Auditoría completada correctamente',
+      },
+      { status: 200 }
+    )
   } catch (error) {
-    console.error('[api/audit] Error:', error)
+    console.error('[API /audit] Error:', error)
     return NextResponse.json(
       { error: 'Error al procesar la auditoría' },
       { status: 500 }

@@ -164,17 +164,24 @@ export default function LandingPage() {
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
-    // Cargar preferencias del localStorage
-    const savedLang = localStorage.getItem('radar-language') as 'es' | 'en' || 'es'
-    const savedDark = localStorage.getItem('radar-dark') === 'true'
-    setLanguage(savedLang)
-    setIsDark(savedDark)
+    try {
+      // Cargar preferencias del localStorage
+      const savedLang = (localStorage.getItem('radar-language') || 'es') as 'es' | 'en'
+      const savedDark = localStorage.getItem('radar-dark') === 'true'
+      setLanguage(savedLang)
+      setIsDark(savedDark)
 
-    // Aplicar dark mode al documento
-    if (savedDark) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
+      // Aplicar dark mode al documento
+      if (savedDark) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    } catch (error) {
+      console.error('[Landing Page] Error loading preferences:', error)
+      // Fallback to defaults
+      setLanguage('es')
+      setIsDark(false)
     }
   }, [])
 
