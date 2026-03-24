@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuditById } from '@/lib/audit'
 import { generatePresupuesto, savePresupuesto } from '@/lib/presupuesto'
 import { sendPresupuestoCompleteEmail } from '@/lib/email'
+import { updateClientStatus } from '@/lib/clients'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function GET(req: NextRequest) {
   try {
@@ -116,6 +118,23 @@ export async function POST(req: NextRequest) {
         { error: emailResult.error || 'Error al enviar email' },
         { status: 500 }
       )
+    }
+
+    // Avanzar lead a "propuesta_enviada" en el pipeline
+    if (supabaseAdmin) {
+      const { data: cliente } = await supabaseAdmin
+        .from('clientes')
+        .select('id, estado')
+        .eq('email', email)
+        .maybeSingle()
+
+      if (cliente && (cliente.estado === 'lead' || cliente.estado === 'contactado')) {
+        await updateClientStatus(
+          cliente.id,
+          'propuesta_enviada',
+          'Presupuesto enviado por email automáticamente'
+        )
+      }
     }
 
     return NextResponse.json(

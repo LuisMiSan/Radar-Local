@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runAudit, saveAudit, getAuditById } from '@/lib/audit'
+import { createLeadFromAudit } from '@/lib/clients'
 import type { AuditFormData } from '@/lib/audit'
 
 export async function GET(req: NextRequest) {
@@ -66,6 +67,14 @@ export async function POST(req: NextRequest) {
 
     // Guardar en Supabase (o in-memory como fallback)
     const auditId = await saveAudit(auditResult)
+
+    // Crear lead en el pipeline automáticamente
+    await createLeadFromAudit(auditResult, {
+      nombre_contacto: nombre_contacto || nombre_negocio,
+      puesto: puesto || '',
+      telefono: telefono || '',
+      email,
+    })
 
     // Devolver audit ID para redirección
     return NextResponse.json(
