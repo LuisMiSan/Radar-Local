@@ -297,7 +297,7 @@ export async function sendPresupuestoCompleteEmail(params: {
   const {
     to, contactName, businessName, zona, score,
     competidores, gaps, pack, precioMensual, precioFundador,
-    roi, features, mejoras, auditUrl, auditResult, presupuesto,
+    roi, features, mejoras, auditResult, presupuesto,
   } = params
 
   const packLabel = pack === 'visibilidad_local' ? 'Visibilidad Local' : 'Autoridad Maps + IA'
