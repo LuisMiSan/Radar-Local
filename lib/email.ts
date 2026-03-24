@@ -431,15 +431,7 @@ export async function sendPresupuestoCompleteEmail(params: {
           </p>
         </div>
 
-        <!-- Link auditoría -->
-        <div style="${STYLES.card}; text-align: center;">
-          <p style="font-size: 13px; color: #64748b; margin: 0 0 8px 0;">
-            <strong>📋 Tu auditoría online:</strong>
-          </p>
-          <a href="${auditUrl}" style="font-size: 13px; color: #2dd4a8; text-decoration: underline;">
-            Ver auditoría completa →
-          </a>
-        </div>
+        <!-- Link auditoría eliminado: ya se adjunta PDF -->
       </div>
 
       <div style="${STYLES.footer}">
