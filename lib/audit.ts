@@ -375,7 +375,7 @@ export async function runAudit(formData: AuditFormData): Promise<AuditResult> {
     if (debilidades.length === 0) debilidades.push('Atributos incompletos')
 
     return {
-      nombre: comp.data?.google_maps_url || comp.name,
+      nombre: comp.name,
       puntuacion: comp.score,
       ventajas: ventajas.slice(0, 3),
       debilidades: debilidades.slice(0, 2),
