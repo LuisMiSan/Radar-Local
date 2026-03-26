@@ -24,6 +24,22 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validar que accion sea un valor permitido
+    if (accion !== 'aprobar' && accion !== 'rechazar') {
+      return NextResponse.json(
+        { error: 'accion debe ser "aprobar" o "rechazar"' },
+        { status: 400 }
+      )
+    }
+
+    // Validar formato UUID de tarea_id
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tarea_id)) {
+      return NextResponse.json(
+        { error: 'tarea_id debe ser un UUID válido' },
+        { status: 400 }
+      )
+    }
+
     if (accion === 'rechazar') {
       const tarea = await rechazarTarea(tarea_id, motivo)
       if (!tarea) {

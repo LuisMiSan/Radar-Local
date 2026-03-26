@@ -11,6 +11,14 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const { cliente_id } = body as { cliente_id?: string }
 
+    // Validar formato UUID si se proporciona cliente_id
+    if (cliente_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cliente_id)) {
+      return NextResponse.json(
+        { error: 'cliente_id debe ser un UUID válido' },
+        { status: 400 }
+      )
+    }
+
     if (cliente_id) {
       // Ejecutar solo tareas aprobadas de un cliente específico
       const tareas = await obtenerTareas(cliente_id, { estado: 'aprobada' })

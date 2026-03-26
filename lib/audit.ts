@@ -288,7 +288,7 @@ if (!globalForAudit._radarAuditStore) {
 const AUDIT_STORE = globalForAudit._radarAuditStore
 
 function generateAuditId(): string {
-  return `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `audit_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 function getRandomInt(min: number, max: number): number {
