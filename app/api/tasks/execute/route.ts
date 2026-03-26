@@ -1,13 +1,22 @@
 import { NextResponse } from 'next/server'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { procesarColaEjecucion, ejecutarTareasAprobadas } from '@/lib/task-executor'
 import { obtenerTareas } from '@/lib/tareas-ejecucion'
 
 // POST /api/tasks/execute
 // Ejecuta tareas aprobadas pendientes
 // Body opcional: { cliente_id?: string } para filtrar por cliente
+// PROTEGIDA: requiere sesión de admin
 
 export async function POST(request: Request) {
   try {
+    // Verificar autenticación
+    const supabase = createSupabaseServer()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
     const body = await request.json().catch(() => ({}))
     const { cliente_id } = body as { cliente_id?: string }
 

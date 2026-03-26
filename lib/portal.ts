@@ -19,7 +19,13 @@ import type { Cliente, Tarea, Metrica, Reporte } from '@/types'
 import crypto from 'crypto'
 
 // ── Clave secreta para generar tokens ──
-const PORTAL_SECRET = process.env.PORTAL_SECRET || 'radar-local-portal-dev-secret-2025'
+// IMPORTANTE: En producción DEBE estar configurada en .env.local / Vercel
+const PORTAL_SECRET = process.env.PORTAL_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[portal] PORTAL_SECRET no configurada en producción — usando fallback INSEGURO')
+  }
+  return 'radar-local-portal-dev-secret-2025'
+})()
 
 // ── Generar token para un cliente (determinístico) ──
 // Siempre genera el mismo token para el mismo clienteId

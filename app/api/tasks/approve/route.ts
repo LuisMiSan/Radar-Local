@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { aprobarTarea, rechazarTarea } from '@/lib/tareas-ejecucion'
 import { ejecutarTareasAprobadas } from '@/lib/task-executor'
 import type { TareaEjecucion } from '@/types'
@@ -6,9 +7,17 @@ import type { TareaEjecucion } from '@/types'
 // POST /api/tasks/approve
 // Aprobar o rechazar una tarea que necesita aprobación humana
 // Body: { tarea_id: string, accion: 'aprobar' | 'rechazar', motivo?: string, ejecutar_ahora?: boolean }
+// PROTEGIDA: requiere sesión de admin
 
 export async function POST(request: Request) {
   try {
+    // Verificar autenticación
+    const supabase = createSupabaseServer()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { tarea_id, accion, motivo, ejecutar_ahora = true } = body as {
       tarea_id: string
