@@ -1,14 +1,28 @@
 import 'server-only'
 import { supabaseAdmin } from './supabase-admin'
-import type { TareaEjecucion, EstadoEjecucion, Agente } from '@/types'
+import type { TareaEjecucion, EstadoEjecucion, Agente, NivelAutonomia } from '@/types'
+import { getNivelAutonomia } from '@/types'
 import type { TareaGenerada } from './agents/types'
 
 // ══════════════════════════════════════════════════════════════
-// TAREAS DE EJECUCIÓN — CRUD para el sistema de ejecución
+// TAREAS DE EJECUCIÓN — Sistema de autonomía inteligente
 //
-// Cuando un agente audita, genera tareas ejecutables.
-// Este módulo gestiona esas tareas en Supabase.
+// Cuando un agente analiza, genera tareas ejecutables.
+// Cada tarea se clasifica por nivel de autonomía:
+//   🟢 auto_ejecutar → se aprueba y ejecuta sola
+//   🟡 notificar     → se ejecuta y se avisa al admin
+//   🔴 aprobar       → espera aprobación del admin
 // ══════════════════════════════════════════════════════════════
+
+// ── Determinar estado inicial de una tarea según autonomía ───
+
+function getEstadoInicial(nivel: NivelAutonomia): EstadoEjecucion {
+  switch (nivel) {
+    case 'auto_ejecutar': return 'aprobada'   // Se auto-aprueba → lista para ejecutar
+    case 'notificar':     return 'aprobada'   // Se auto-aprueba → ejecutar + notificar
+    case 'aprobar':       return 'pendiente'  // Espera aprobación humana
+  }
+}
 
 // ── Guardar tareas generadas por un agente ──────────────────
 
@@ -17,11 +31,29 @@ export async function guardarTareasGeneradas(
   agente: Agente,
   tareas: TareaGenerada[],
   informeId?: string
-): Promise<TareaEjecucion[]> {
+): Promise<{ guardadas: TareaEjecucion[]; resumenAutonomia: ResumenAutonomia }> {
+  const now = new Date().toISOString()
+
+  // Clasificar cada tarea por nivel de autonomía
+  const tareasConNivel = tareas.map((t) => {
+    const nivel = getNivelAutonomia(t.tipo, t.campo_gbp, t.prioridad)
+    const estadoInicial = getEstadoInicial(nivel)
+    return { ...t, nivel, estadoInicial }
+  })
+
+  // Resumen para logs
+  const resumen: ResumenAutonomia = {
+    total: tareas.length,
+    auto_ejecutar: tareasConNivel.filter(t => t.nivel === 'auto_ejecutar').length,
+    notificar: tareasConNivel.filter(t => t.nivel === 'notificar').length,
+    aprobar: tareasConNivel.filter(t => t.nivel === 'aprobar').length,
+  }
+
+  console.log(`[tareas-ejecucion] ${agente}: ${resumen.auto_ejecutar} auto 🟢 | ${resumen.notificar} notificar 🟡 | ${resumen.aprobar} aprobar 🔴`)
+
   if (!supabaseAdmin) {
     console.log(`[tareas-ejecucion] Sin Supabase → ${tareas.length} tareas no guardadas`)
-    // Devolver las tareas como si se hubieran guardado (para desarrollo sin DB)
-    return tareas.map((t, i) => ({
+    const mockTareas = tareasConNivel.map((t, i) => ({
       id: `mock-${agente}-${i}`,
       cliente_id: clienteId,
       agente,
@@ -31,22 +63,23 @@ export async function guardarTareasGeneradas(
       categoria: t.categoria,
       tipo: t.tipo,
       prioridad: t.prioridad,
-      estado: 'pendiente' as EstadoEjecucion,
+      estado: t.estadoInicial,
       campo_gbp: t.campo_gbp,
       valor_actual: t.valor_actual,
       valor_propuesto: t.valor_propuesto,
       accion_api: t.accion_api ?? null,
       resultado: null,
       error: null,
-      aprobado_por: null,
-      aprobado_en: null,
+      aprobado_por: t.estadoInicial === 'aprobada' ? 'sistema_autonomo' : null,
+      aprobado_en: t.estadoInicial === 'aprobada' ? now : null,
       ejecutado_en: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: now,
+      updated_at: now,
     }))
+    return { guardadas: mockTareas as TareaEjecucion[], resumenAutonomia: resumen }
   }
 
-  const rows = tareas.map((t) => ({
+  const rows = tareasConNivel.map((t) => ({
     cliente_id: clienteId,
     agente,
     informe_id: informeId ?? null,
@@ -55,11 +88,14 @@ export async function guardarTareasGeneradas(
     categoria: t.categoria,
     tipo: t.tipo,
     prioridad: t.prioridad,
-    estado: 'pendiente',
+    estado: t.estadoInicial,
     campo_gbp: t.campo_gbp,
     valor_actual: t.valor_actual,
     valor_propuesto: t.valor_propuesto,
     accion_api: t.accion_api ?? null,
+    // Auto-aprobar las que no necesitan revisión humana
+    aprobado_por: t.estadoInicial === 'aprobada' ? 'sistema_autonomo' : null,
+    aprobado_en: t.estadoInicial === 'aprobada' ? now : null,
   }))
 
   const { data, error } = await supabaseAdmin
@@ -73,7 +109,16 @@ export async function guardarTareasGeneradas(
   }
 
   console.log(`[tareas-ejecucion] ${data.length} tareas guardadas para ${agente}`)
-  return data as TareaEjecucion[]
+  return { guardadas: data as TareaEjecucion[], resumenAutonomia: resumen }
+}
+
+// ── Resumen de autonomía ────────────────────────────────────
+
+export interface ResumenAutonomia {
+  total: number
+  auto_ejecutar: number
+  notificar: number
+  aprobar: number
 }
 
 // ── Obtener tareas de un cliente ────────────────────────────

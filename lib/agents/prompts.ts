@@ -76,10 +76,17 @@ Cada tarea debe especificar:
 - valor_actual: valor actual del campo (si aplica)
 - valor_propuesto: el valor corregido/mejorado que propones (si aplica, especialmente para tipo "auto")
 
-IMPORTANTE sobre el tipo de tarea:
-- "auto": Cosas que NO tienen consecuencias graves. Ej: crear una descripción para una foto, generar un post, escribir una respuesta a reseña.
-- "revision": Cosas que CAMBIAN el perfil público. Ej: modificar nombre del negocio, cambiar categoría, editar descripción principal.
-- "manual": Cosas que requieren acción física. Ej: tomar fotos del local, conseguir reseñas, verificar dirección en persona.
+IMPORTANTE sobre el tipo de tarea y campo_gbp:
+
+Tipos (determinan el nivel de autonomía):
+- "auto": Se ejecuta sin aprobación. Ej: generar posts, crear schemas, escribir descripciones, responder reseñas positivas.
+- "revision": Se ejecuta pero se notifica al admin. Ej: cambiar horarios, categorías secundarias, responder reseñas neutras.
+- "manual": Requiere acción humana. Ej: tomar fotos, conseguir reseñas, verificar dirección.
+
+Campos GBP válidos (USAR EXACTAMENTE estos valores):
+- 🟢 Auto-ejecutar: "descripcion", "posts", "fotos_descripcion", "schema_jsonld", "faq", "chunks_contenido", "tldr_entidad", "atributos_secundarios", "respuesta_resena_positiva"
+- 🟡 Notificar: "respuesta_resena_neutra", "categorias_secundarias", "horarios", "servicios", "productos"
+- 🔴 Requiere aprobación: "nombre", "direccion", "telefono", "categoria_principal", "respuesta_resena_negativa", "eliminacion", "web", "verificacion"
 
 Responde SOLO en JSON válido:
 {
@@ -128,13 +135,20 @@ Analiza las reseñas del negocio y genera respuestas profesionales:
 2. **Respuestas sugeridas**: para reseñas representativas (positivas y negativas)
 3. **Estrategia**: plan para mejorar cantidad y calidad de reseñas
 4. **Impacto ranking**: cómo las reseñas afectan la posición en Maps
+5. **TAREAS EJECUTABLES**: Una tarea por cada respuesta sugerida
+
+Para cada respuesta, genera una tarea con:
+- campo_gbp: "respuesta_resena_positiva" (para positivas/neutras) o "respuesta_resena_negativa" (para negativas)
+- tipo: "auto" (positivas) o "revision" (negativas — necesitan aprobación)
+- valor_propuesto: la respuesta completa lista para publicar
 
 Responde SOLO en JSON válido:
 {
   "total": number, "positivas": number, "negativas": number, "neutras": number, "puntuacion_media": number,
   "respuestas_sugeridas": [{"resena": string, "tipo": "positiva"|"negativa", "respuesta": string}],
   "estrategia": string,
-  "impacto_ranking": string
+  "impacto_ranking": string,
+  "tareas": [{"titulo": string, "descripcion": string, "categoria": "mejora", "tipo": "auto"|"revision", "prioridad": "alta"|"media", "campo_gbp": "respuesta_resena_positiva"|"respuesta_resena_negativa", "valor_actual": string, "valor_propuesto": string}]
 }`,
 
   redactor_posts_gbp: `## Tu tarea
@@ -144,10 +158,17 @@ Genera 3 posts GBP optimizados para mejorar posición en Map Pack:
 2. CTA claro que genere métricas Maps (clics, llamadas, rutas)
 3. Variedad de tipos: novedad, consejo/valor, prueba social
 4. Tono adaptado al sector del negocio
+5. **TAREAS EJECUTABLES**: Una tarea "auto" por cada post generado
+
+Cada tarea debe tener:
+- campo_gbp: "posts"
+- tipo: "auto" (los posts se publican automáticamente sin aprobación)
+- valor_propuesto: el contenido completo del post
 
 Responde SOLO en JSON válido:
 {
-  "posts": [{"titulo": string, "contenido": string, "cta": string, "tipo": "novedad"|"consejo"|"prueba_social"|"oferta", "objetivo_map_pack": string}]
+  "posts": [{"titulo": string, "contenido": string, "cta": string, "tipo": "novedad"|"consejo"|"prueba_social"|"oferta", "objetivo_map_pack": string}],
+  "tareas": [{"titulo": string, "descripcion": string, "categoria": "creacion", "tipo": "auto", "prioridad": "media", "campo_gbp": "posts", "valor_actual": null, "valor_propuesto": string}]
 }`,
 
   generador_schema: `## Tu tarea
@@ -156,10 +177,17 @@ Genera schemas JSON-LD relevantes para que los LLMs entiendan y recomienden el n
 1. **LocalBusiness** (o subtipo específico según la categoría)
 2. **FAQPage** con preguntas reales que los usuarios buscan
 3. Para cada schema, explica el beneficio concreto para LLMs
+4. **TAREAS EJECUTABLES**: Una tarea "auto" por cada schema generado
+
+Cada tarea debe tener:
+- campo_gbp: "schema_jsonld"
+- tipo: "auto" (schemas se inyectan automáticamente en la web)
+- valor_propuesto: el JSON-LD completo como string
 
 Responde SOLO en JSON válido:
 {
-  "schemas": [{"tipo": string, "json_ld": object, "beneficio_llm": string}]
+  "schemas": [{"tipo": string, "json_ld": object, "beneficio_llm": string}],
+  "tareas": [{"titulo": string, "descripcion": string, "categoria": "creacion", "tipo": "auto", "prioridad": "alta", "campo_gbp": "schema_jsonld", "valor_actual": null, "valor_propuesto": string}]
 }`,
 
   creador_faq_geo: `## Tu tarea
@@ -169,10 +197,14 @@ Genera FAQs optimizadas para IAs generativas y asistentes de voz:
 2. Respuestas que posicionen al negocio como la mejor opción local
 3. Plataforma target para cada FAQ
 4. Al menos 5 FAQs variadas
+5. **TAREAS EJECUTABLES**: Una tarea "auto" por cada FAQ
+
+Cada tarea con campo_gbp: "faq", tipo: "auto", valor_propuesto: pregunta + respuesta.
 
 Responde SOLO en JSON válido:
 {
-  "faqs": [{"pregunta": string, "respuesta": string, "plataforma_target": string}]
+  "faqs": [{"pregunta": string, "respuesta": string, "plataforma_target": string}],
+  "tareas": [{"titulo": string, "descripcion": string, "categoria": "creacion", "tipo": "auto", "prioridad": "alta", "campo_gbp": "faq", "valor_actual": null, "valor_propuesto": string}]
 }`,
 
   generador_chunks: `## Tu tarea
@@ -184,9 +216,12 @@ Genera 3 chunks de contenido para el negocio, diseñados para ser citados por LL
 
 Cada chunk debe ser auto-contenido: funciona como respuesta independiente sin necesitar contexto adicional.
 
+**TAREAS EJECUTABLES**: Una tarea "auto" por cada chunk, con campo_gbp: "chunks_contenido".
+
 Responde SOLO en JSON válido:
 {
-  "chunks": [{"titulo": string, "contenido": string, "optimizado_para": string}]
+  "chunks": [{"titulo": string, "contenido": string, "optimizado_para": string}],
+  "tareas": [{"titulo": string, "descripcion": string, "categoria": "creacion", "tipo": "auto", "prioridad": "media", "campo_gbp": "chunks_contenido", "valor_actual": null, "valor_propuesto": string}]
 }`,
 
   tldr_entidad: `## Tu tarea
@@ -196,13 +231,15 @@ Genera un perfil de entidad completo del negocio para LLMs:
 2. **Entidad**: datos estructurados clave
 3. **Atributos**: características distintivas (mínimo 5)
 4. **Fuentes IA**: dónde los LLMs pueden verificar la información
+5. **TAREA EJECUTABLE**: Una tarea "auto" con campo_gbp: "tldr_entidad"
 
 Responde SOLO en JSON válido:
 {
   "resumen": string,
   "entidad": {"nombre": string, "tipo": string, "ubicacion": string, "contacto": string, "valoracion": string},
   "atributos": [string],
-  "fuentes_ia": [string]
+  "fuentes_ia": [string],
+  "tareas": [{"titulo": "Publicar TL;DR de entidad", "descripcion": string, "categoria": "creacion", "tipo": "auto", "prioridad": "alta", "campo_gbp": "tldr_entidad", "valor_actual": null, "valor_propuesto": string}]
 }`,
 
   monitor_ias: `## Tu tarea

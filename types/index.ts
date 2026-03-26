@@ -8,6 +8,12 @@ export type Pack = 'visibilidad_local' | 'autoridad_maps_ia'
 export type EstadoCliente = 'lead' | 'contactado' | 'llamada_info' | 'propuesta_enviada' | 'negociando' | 'llamada_onboarding' | 'activo' | 'pausado' | 'eliminado'
 export type EstadoTarea = 'pendiente' | 'en_progreso' | 'completada' | 'error'
 
+// Niveles de autonomía — qué nivel de control humano requiere cada acción
+// 🟢 auto_ejecutar: se ejecuta sin preguntar (posts, descripciones, schemas)
+// 🟡 notificar: se ejecuta pero se notifica al admin (reseñas neutras, categorías secundarias)
+// 🔴 aprobar: NO se ejecuta hasta que el admin lo apruebe (NAP, reseñas negativas, eliminaciones)
+export type NivelAutonomia = 'auto_ejecutar' | 'notificar' | 'aprobar'
+
 // Estados para tareas de ejecución (lo que los agentes HACEN, no solo reportan)
 export type TipoEjecucion = 'auto' | 'revision' | 'manual'
 export type PrioridadTarea = 'critica' | 'alta' | 'media' | 'baja'
@@ -178,6 +184,74 @@ export const TIPO_EJECUCION_LABELS: Record<TipoEjecucion, string> = {
   auto: 'Automático',
   revision: 'Requiere aprobación',
   manual: 'Manual',
+}
+
+export const NIVEL_AUTONOMIA_LABELS: Record<NivelAutonomia, string> = {
+  auto_ejecutar: '🟢 Auto-ejecutar',
+  notificar: '🟡 Notificar',
+  aprobar: '🔴 Requiere aprobación',
+}
+
+export const NIVEL_AUTONOMIA_COLORS: Record<NivelAutonomia, { bg: string; text: string; dot: string }> = {
+  auto_ejecutar: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+  notificar: { bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500' },
+  aprobar: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+}
+
+// ── Mapeo de autonomía por campo GBP ──────────────────────────
+// Define qué nivel de control requiere cada tipo de cambio
+export const AUTONOMIA_POR_CAMPO: Record<string, NivelAutonomia> = {
+  // 🟢 Auto-ejecutar — sin consecuencias graves
+  descripcion: 'auto_ejecutar',
+  posts: 'auto_ejecutar',
+  fotos_descripcion: 'auto_ejecutar',   // textos alt de fotos
+  fotos: 'auto_ejecutar',               // subir fotos
+  schema_jsonld: 'auto_ejecutar',
+  faq: 'auto_ejecutar',
+  chunks_contenido: 'auto_ejecutar',
+  tldr_entidad: 'auto_ejecutar',
+  atributos: 'auto_ejecutar',           // completar atributos
+  atributos_secundarios: 'auto_ejecutar',
+  respuesta_resena_positiva: 'auto_ejecutar',
+
+  // 🟡 Notificar — se ejecuta pero avisa al admin
+  respuesta_resena_neutra: 'notificar',
+  categorias_secundarias: 'notificar',
+  horarios: 'notificar',
+  servicios: 'notificar',
+  productos: 'notificar',
+
+  // 🔴 Requiere aprobación — riesgo alto
+  nombre: 'aprobar',
+  direccion: 'aprobar',
+  telefono: 'aprobar',
+  categoria_principal: 'aprobar',
+  respuesta_resena_negativa: 'aprobar',
+  eliminacion: 'aprobar',
+  web: 'aprobar',
+  verificacion: 'aprobar',
+}
+
+// Helper: determinar nivel de autonomía de una tarea
+export function getNivelAutonomia(
+  tipo: TipoEjecucion,
+  campoGbp: string | null,
+  prioridad: PrioridadTarea
+): NivelAutonomia {
+  // Manual siempre requiere aprobación (intervención humana)
+  if (tipo === 'manual') return 'aprobar'
+
+  // Si tiene campo GBP específico, usar el mapeo
+  if (campoGbp && AUTONOMIA_POR_CAMPO[campoGbp]) {
+    return AUTONOMIA_POR_CAMPO[campoGbp]
+  }
+
+  // Prioridad crítica siempre necesita aprobación
+  if (prioridad === 'critica') return 'aprobar'
+
+  // Por defecto: auto se auto-ejecuta, revision necesita aprobación
+  if (tipo === 'auto') return 'auto_ejecutar'
+  return 'aprobar'
 }
 
 export const PRIORIDAD_LABELS: Record<PrioridadTarea, string> = {

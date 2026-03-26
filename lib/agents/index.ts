@@ -78,16 +78,26 @@ export async function runAgent(
     completed_at: result.estado === 'completada' ? new Date().toISOString() : null,
   })
 
-  // 9. NUEVO: Si el agente generó tareas ejecutables, guardarlas en Supabase
+  // 9. Si el agente generó tareas ejecutables, guardarlas con autonomía inteligente
   if (result.tareas && result.tareas.length > 0) {
     try {
-      const tareasGuardadas = await guardarTareasGeneradas(
+      const { guardadas, resumenAutonomia } = await guardarTareasGeneradas(
         clienteId,
         agente,
         result.tareas,
         tarea.id  // ID del informe/tarea que originó estas tareas
       )
-      console.log(`[${agente}] ${tareasGuardadas.length} tareas de ejecución guardadas`)
+      console.log(`[${agente}] ${guardadas.length} tareas guardadas — 🟢${resumenAutonomia.auto_ejecutar} auto | 🟡${resumenAutonomia.notificar} notificar | 🔴${resumenAutonomia.aprobar} aprobar`)
+
+      // 10. Ejecutar automáticamente las tareas auto-aprobadas
+      const tareasAutoAprobadas = guardadas.filter(t => t.estado === 'aprobada')
+      if (tareasAutoAprobadas.length > 0) {
+        // Importar dinámicamente para evitar dependencia circular
+        const { ejecutarTareasAprobadas } = await import('@/lib/task-executor')
+        ejecutarTareasAprobadas(tareasAutoAprobadas).catch(e =>
+          console.error(`[${agente}] Error en auto-ejecución:`, e)
+        )
+      }
     } catch (e) {
       console.error(`[${agente}] Error guardando tareas de ejecución:`, e)
       // No fallamos la ejecución por esto — las tareas están en result.tareas
