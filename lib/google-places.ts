@@ -157,6 +157,10 @@ export async function searchCompetitors(
 // Normalizar datos de la API a nuestro formato
 // ─────────────────────────────────────────────────────────
 export function normalizePlaceData(place: PlaceResult): PlaceData {
+  // Debug: log raw displayName para diagnosticar nombres incorrectos
+  if (!place.displayName?.text) {
+    console.warn('[Google Places] normalizePlaceData: displayName.text is missing!', 'displayName:', JSON.stringify(place.displayName), 'googleMapsUri:', place.googleMapsUri)
+  }
   return {
     nombre: place.displayName?.text || 'Desconocido',
     direccion: place.formattedAddress || '',

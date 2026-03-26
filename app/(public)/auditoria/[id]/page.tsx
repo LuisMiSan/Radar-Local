@@ -146,6 +146,8 @@ export default function AuditoriaResultsPage() {
 
   const comp1Name = result.competidores[0].nombre
   const comp2Name = result.competidores[1].nombre
+  const comp1MapsUrl = result.competidores[0].google_maps_url || `https://www.google.com/maps/search/${encodeURIComponent(comp1Name + ' ' + result.negocio.zona)}`
+  const comp2MapsUrl = result.competidores[1].google_maps_url || `https://www.google.com/maps/search/${encodeURIComponent(comp2Name + ' ' + result.negocio.zona)}`
 
   // Calcular media competidores vs tu negocio
   const tuMedia = result.negocio.puntuacion
@@ -202,7 +204,7 @@ export default function AuditoriaResultsPage() {
                 {comp1Name}
               </p>
               <a
-                href={`https://www.google.com/maps/search/${encodeURIComponent(comp1Name + ' ' + result.negocio.zona)}`}
+                href={comp1MapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-accent hover:underline mt-1"
@@ -232,7 +234,7 @@ export default function AuditoriaResultsPage() {
                 {comp2Name}
               </p>
               <a
-                href={`https://www.google.com/maps/search/${encodeURIComponent(comp2Name + ' ' + result.negocio.zona)}`}
+                href={comp2MapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-accent hover:underline mt-1"
@@ -328,7 +330,7 @@ export default function AuditoriaResultsPage() {
                   {comp.nombre}
                 </h3>
                 <a
-                  href={`https://www.google.com/maps/search/${encodeURIComponent(comp.nombre + ' ' + result.negocio.zona)}`}
+                  href={comp.google_maps_url || `https://www.google.com/maps/search/${encodeURIComponent(comp.nombre + ' ' + result.negocio.zona)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-accent hover:underline"

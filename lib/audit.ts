@@ -36,6 +36,7 @@ export interface CompetidorAuditoria {
   ventajas: string[]
   debilidades: string[]
   diferencia_puntos: number
+  google_maps_url?: string // URL directa de Google Maps (de la API)
 }
 
 export interface GapAuditoria {
@@ -277,6 +278,22 @@ function generateGapsFromData(
   return gaps.slice(0, 6) // Máximo 6 gaps
 }
 
+// ─── Helper: limpiar nombre que sea URL de Google Maps ───
+function cleanCompetitorName(nombre: string, fallback: string): string {
+  // Si el nombre parece ser una URL de Google Maps, extraer el nombre real
+  if (nombre.includes('google.com/maps') || nombre.startsWith('http')) {
+    // Intentar extraer de URL tipo: https://maps.google.com/?cid=... o /place/Nombre+Del+Negocio/
+    const placeMatch = nombre.match(/\/place\/([^/]+)/)
+    if (placeMatch) {
+      return decodeURIComponent(placeMatch[1].replace(/\+/g, ' '))
+    }
+    // Si no se puede extraer, usar fallback
+    console.warn('[audit] Nombre de competidor es una URL, usando fallback:', nombre)
+    return fallback || 'Competidor'
+  }
+  return nombre
+}
+
 // Mock audit store (in-memory for dev)
 // Usar globalThis para que persista entre recargas de HMR en dev
 const globalForAudit = globalThis as typeof globalThis & {
@@ -320,20 +337,26 @@ export async function runAudit(formData: AuditFormData): Promise<AuditResult> {
     // Buscar competidores específicos por nombre
     if (comp1Name) {
       const p = await searchPlace(comp1Name, formData.zona)
+      if (p) console.log('[audit] Comp1 displayName:', JSON.stringify(p.displayName), 'googleMapsUri:', p.googleMapsUri)
       const d = p ? normalizePlaceData(p) : null
-      competidoresData.push({ name: d?.nombre || comp1Name, data: d, score: d ? calculateGBPScore(d) : getCompetitorScore(clientScore) })
+      const nombre = cleanCompetitorName(d?.nombre || comp1Name, comp1Name)
+      competidoresData.push({ name: nombre, data: d, score: d ? calculateGBPScore(d) : getCompetitorScore(clientScore) })
     }
     if (comp2Name) {
       const p = await searchPlace(comp2Name, formData.zona)
+      if (p) console.log('[audit] Comp2 displayName:', JSON.stringify(p.displayName), 'googleMapsUri:', p.googleMapsUri)
       const d = p ? normalizePlaceData(p) : null
-      competidoresData.push({ name: d?.nombre || comp2Name, data: d, score: d ? calculateGBPScore(d) : getCompetitorScore(clientScore) })
+      const nombre = cleanCompetitorName(d?.nombre || comp2Name, comp2Name)
+      competidoresData.push({ name: nombre, data: d, score: d ? calculateGBPScore(d) : getCompetitorScore(clientScore) })
     }
   } else {
     // Buscar competidores automáticamente por categoría
     const autoComps = await searchCompetitors(formData.categoria, formData.zona, formData.nombre_negocio, 2)
     autoComps.forEach(p => {
+      console.log('[audit] AutoComp displayName:', JSON.stringify(p.displayName), 'googleMapsUri:', p.googleMapsUri)
       const d = normalizePlaceData(p)
-      competidoresData.push({ name: d.nombre, data: d, score: calculateGBPScore(d) })
+      const nombre = cleanCompetitorName(d.nombre, `Competidor en ${formData.zona}`)
+      competidoresData.push({ name: nombre, data: d, score: calculateGBPScore(d) })
     })
   }
 
@@ -380,6 +403,7 @@ export async function runAudit(formData: AuditFormData): Promise<AuditResult> {
       ventajas: ventajas.slice(0, 3),
       debilidades: debilidades.slice(0, 2),
       diferencia_puntos: diff,
+      google_maps_url: comp.data?.google_maps_url || undefined,
     }
   }
 
