@@ -1,5 +1,5 @@
 // Audit logic - Google Places API + Supabase con fallback in-memory
-import { supabase } from './supabase'
+import { supabaseAdmin } from './supabase-admin'
 import { searchPlace, searchCompetitors, normalizePlaceData, calculateGBPScore } from './google-places'
 import type { PlaceData } from './google-places'
 
@@ -423,8 +423,8 @@ export async function runAudit(formData: AuditFormData): Promise<AuditResult> {
   }
 
   // Guardar en Supabase si disponible, sino in-memory
-  if (supabase) {
-    const { error } = await supabase.from('auditorias').insert({
+  if (supabaseAdmin) {
+    const { error } = await supabaseAdmin.from('auditorias').insert({
       id,
       nombre_negocio: formData.nombre_negocio,
       direccion: formData.direccion,
@@ -484,8 +484,8 @@ function rowToAuditResult(row: Record<string, unknown>): AuditResult {
 
 export async function getAuditById(id: string): Promise<AuditResult | null> {
   // Intentar Supabase primero
-  if (supabase) {
-    const { data, error } = await supabase
+  if (supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
       .from('auditorias')
       .select('*')
       .eq('id', id)
@@ -504,8 +504,8 @@ export async function getAuditById(id: string): Promise<AuditResult | null> {
 }
 
 export async function saveAudit(result: AuditResult): Promise<string> {
-  if (supabase) {
-    const { error } = await supabase.from('auditorias').upsert({
+  if (supabaseAdmin) {
+    const { error } = await supabaseAdmin.from('auditorias').upsert({
       id: result.id,
       nombre_negocio: result.negocio.nombre,
       direccion: result.negocio.direccion,

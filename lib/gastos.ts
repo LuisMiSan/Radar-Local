@@ -17,7 +17,7 @@ export interface RegistroGasto {
   coste_input: number
   coste_output: number
   coste_total: number
-  tipo: 'agente' | 'individual' | 'analisis_completo'
+  tipo: 'agente' | 'individual' | 'analisis_completo' | 'google_places'
 }
 
 export interface ResumenDiario {
@@ -235,4 +235,28 @@ export async function getGastoMesActual(): Promise<{ total: number; llamadas: nu
   const rows = data ?? []
   const total = rows.reduce((sum, r) => sum + Number(r.coste_total), 0)
   return { total, llamadas: rows.length }
+}
+
+// ════════════════════════════════════════════════════════════
+// GOOGLE PLACES API — Registro de consumo
+// ════════════════════════════════════════════════════════════
+// Google Places Text Search: $0.032 por request (hasta 5 fields)
+// Ref: https://developers.google.com/maps/documentation/places/web-service/usage-and-billing
+const GOOGLE_PLACES_COST_PER_REQUEST = 0.032
+
+export async function registrarGastoGooglePlaces(
+  tipo_busqueda: 'negocio_principal' | 'competidor' | 'competidores_auto',
+  query: string
+): Promise<void> {
+  await registrarGasto({
+    agente: 'google_places_api',
+    modelo: `places_text_search:${tipo_busqueda}`,
+    input_tokens: 0,
+    output_tokens: 0,
+    coste_input: 0,
+    coste_output: 0,
+    coste_total: GOOGLE_PLACES_COST_PER_REQUEST,
+    tipo: 'google_places',
+    cliente_nombre: query.substring(0, 100),
+  })
 }

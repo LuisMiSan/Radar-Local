@@ -2,6 +2,7 @@
 // Google Places API (New) — Datos reales de negocios
 // ─────────────────────────────────────────────────────────
 import 'server-only'
+import { registrarGastoGooglePlaces } from './gastos'
 
 const API_KEY = process.env.GOOGLE_PLACES_API_KEY || ''
 const BASE_URL = 'https://places.googleapis.com/v1/places'
@@ -83,7 +84,13 @@ export async function searchPlace(query: string, zona?: string): Promise<PlaceRe
       return null
     }
 
-    return data.places?.[0] || null
+    const result = data.places?.[0] || null
+
+    // Registrar gasto (no bloquea)
+    registrarGastoGooglePlaces('negocio_principal', fullQuery)
+      .catch(e => console.error('[Google Places] Error registrando gasto:', e))
+
+    return result
   } catch (error) {
     console.error('[Google Places] Fetch error:', error)
     return null
@@ -127,6 +134,10 @@ export async function searchCompetitors(
 
     const data = await res.json()
     if (data.error || !data.places) return []
+
+    // Registrar gasto (no bloquea)
+    registrarGastoGooglePlaces('competidores_auto', `${categoria} ${zona}`)
+      .catch(e => console.error('[Google Places] Error registrando gasto:', e))
 
     // Filtrar el propio negocio si aparece
     const filtered = excludeName
