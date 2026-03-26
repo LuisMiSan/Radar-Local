@@ -1,5 +1,7 @@
-// Audit logic - Supabase con fallback in-memory
+// Audit logic - Google Places API + Supabase con fallback in-memory
 import { supabase } from './supabase'
+import { searchPlace, searchCompetitors, normalizePlaceData, calculateGBPScore } from './google-places'
+import type { PlaceData } from './google-places'
 
 // Types from landing form
 export interface AuditFormData {
@@ -167,6 +169,114 @@ const GAPS_POR_CATEGORIA: Record<string, GapAuditoria[]> = {
   ],
 }
 
+// ─── Generar gaps basados en datos reales ───
+function generateGapsFromData(
+  mainData: PlaceData | null,
+  categoria: string,
+  competidores: { data: PlaceData | null; score: number }[]
+): GapAuditoria[] {
+  // Si no hay datos reales, usar gaps por categoría
+  if (!mainData) {
+    const categoryKey = categoria?.toLowerCase() || 'default'
+    const categoryGaps = GAPS_POR_CATEGORIA[categoryKey] || GAPS_POR_CATEGORIA.default
+    const gapCount = getRandomInt(4, 5)
+    return categoryGaps.sort(() => Math.random() - 0.5).slice(0, gapCount)
+  }
+
+  const gaps: GapAuditoria[] = []
+  const bestComp = competidores.reduce((best, c) => (c.data && (!best.data || c.score > best.score)) ? c : best, competidores[0])
+
+  // Fotos
+  if (mainData.fotos_count < 10) {
+    const compFotos = bestComp?.data?.fotos_count || 20
+    gaps.push({
+      area: 'Fotos GBP',
+      icono: 'Camera',
+      impacto: mainData.fotos_count < 5 ? 'critica' : 'alta',
+      descripcion: `Solo ${mainData.fotos_count} fotos en tu perfil.${compFotos > mainData.fotos_count ? ` Tu competidor tiene ${compFotos}.` : ''} Google recomienda 20+.`,
+      accion_recomendada: 'Subir fotos profesionales del negocio, equipo y servicios/productos.',
+    })
+  }
+
+  // Reseñas
+  const compResenas = bestComp?.data?.resenas_count || 50
+  if (mainData.resenas_count < compResenas || mainData.resenas_count < 20) {
+    gaps.push({
+      area: 'Reseñas',
+      icono: 'Star',
+      impacto: mainData.resenas_count < 10 ? 'critica' : 'alta',
+      descripcion: `${mainData.resenas_count} reseñas con rating ${mainData.rating}/5.${compResenas > mainData.resenas_count ? ` Competidor: ${compResenas} reseñas.` : ''} Más reseñas = más visibilidad.`,
+      accion_recomendada: 'Solicitar reseñas a clientes satisfechos. Responder a todas las existentes.',
+    })
+  }
+
+  // Posts GBP (la API no devuelve posts, siempre es un gap)
+  gaps.push({
+    area: 'Posts GBP',
+    icono: 'FileText',
+    impacto: 'alta',
+    descripcion: 'Sin actividad de posts detectada. Google recompensa perfiles actualizados semanalmente.',
+    accion_recomendada: 'Publicar ofertas, novedades, tips de industria — mínimo 2 posts/semana.',
+  })
+
+  // Descripción
+  if (!mainData.tiene_descripcion) {
+    gaps.push({
+      area: 'Descripción y categorías',
+      icono: 'Code',
+      impacto: 'media',
+      descripcion: 'Sin descripción editorial en Google. Esto reduce la relevancia en búsquedas por voz.',
+      accion_recomendada: 'Crear descripción con keywords naturales, especialidades y diferenciales.',
+    })
+  }
+
+  // Horarios
+  if (!mainData.horarios_completos) {
+    gaps.push({
+      area: 'Horarios',
+      icono: 'Eye',
+      impacto: 'media',
+      descripcion: 'Horarios incompletos o no configurados. Google penaliza perfiles sin horarios verificados.',
+      accion_recomendada: 'Completar horarios regulares + horarios especiales (festivos, vacaciones).',
+    })
+  }
+
+  // Web
+  if (!mainData.tiene_web) {
+    gaps.push({
+      area: 'Web vinculada',
+      icono: 'Search',
+      impacto: 'media',
+      descripcion: 'No hay web vinculada al perfil. Los perfiles con web generan más confianza y clics.',
+      accion_recomendada: 'Vincular web del negocio al perfil de Google Business Profile.',
+    })
+  }
+
+  // Rating bajo
+  if (mainData.rating > 0 && mainData.rating < 4.0) {
+    gaps.push({
+      area: 'Rating bajo',
+      icono: 'Star',
+      impacto: 'critica',
+      descripcion: `Rating actual: ${mainData.rating}/5. Google da prioridad a negocios con 4.0+. Los usuarios filtran por estrellas.`,
+      accion_recomendada: 'Mejorar experiencia del cliente. Solicitar reseñas positivas. Responder profesionalmente a negativas.',
+    })
+  }
+
+  // Asegurar mínimo 3 gaps
+  if (gaps.length < 3) {
+    const categoryKey = categoria?.toLowerCase() || 'default'
+    const extraGaps = GAPS_POR_CATEGORIA[categoryKey] || GAPS_POR_CATEGORIA.default
+    extraGaps.forEach(g => {
+      if (gaps.length < 4 && !gaps.find(existing => existing.area === g.area)) {
+        gaps.push(g)
+      }
+    })
+  }
+
+  return gaps.slice(0, 6) // Máximo 6 gaps
+}
+
 // Mock audit store (in-memory for dev)
 // Usar globalThis para que persista entre recargas de HMR en dev
 const globalForAudit = globalThis as typeof globalThis & {
@@ -192,69 +302,120 @@ function getCompetitorScore(clientScore: number): number {
 
 export async function runAudit(formData: AuditFormData): Promise<AuditResult> {
   const id = generateAuditId()
-  
-  // Client baseline score based on category
-  const clientBaseScore = getRandomInt(25, 65)
-  
-  // Competitors score higher
-  const competitor1Score = getCompetitorScore(clientBaseScore)
-  const competitor2Score = getCompetitorScore(clientBaseScore)
-  
-  // Select gaps based on category
-  const categoryKey = formData.categoria?.toLowerCase() || 'default'
-  const categoryGaps = GAPS_POR_CATEGORIA[categoryKey] || GAPS_POR_CATEGORIA.default
-  
-  // Randomly select 4-5 gaps
-  const gapCount = getRandomInt(4, 5)
-  const gaps = categoryGaps
-    .sort(() => Math.random() - 0.5)
-    .slice(0, gapCount)
-  
-  // Determine recommended pack based on client score
-  const recomendacion_pack = clientBaseScore < 50 ? 'visibilidad_local' : 'autoridad_maps_ia'
-  
+
+  // ─── 1. Buscar negocio principal en Google Places ───
+  const mainPlace = await searchPlace(formData.nombre_negocio, formData.zona)
+  const mainData: PlaceData | null = mainPlace ? normalizePlaceData(mainPlace) : null
+  const clientScore = mainData ? calculateGBPScore(mainData) : getRandomInt(25, 65)
+
+  // ─── 2. Buscar competidores ───
+  // Si el usuario proporcionó nombres, buscarlos directamente
+  // Si no, buscar por categoría + zona
+  const competidoresData: { name: string; data: PlaceData | null; score: number }[] = []
+
+  const comp1Name = formData.competidor1 && formData.competidor1 !== 'Competidor 1' ? formData.competidor1 : null
+  const comp2Name = formData.competidor2 && formData.competidor2 !== 'Competidor 2' ? formData.competidor2 : null
+
+  if (comp1Name || comp2Name) {
+    // Buscar competidores específicos por nombre
+    if (comp1Name) {
+      const p = await searchPlace(comp1Name, formData.zona)
+      const d = p ? normalizePlaceData(p) : null
+      competidoresData.push({ name: d?.nombre || comp1Name, data: d, score: d ? calculateGBPScore(d) : getCompetitorScore(clientScore) })
+    }
+    if (comp2Name) {
+      const p = await searchPlace(comp2Name, formData.zona)
+      const d = p ? normalizePlaceData(p) : null
+      competidoresData.push({ name: d?.nombre || comp2Name, data: d, score: d ? calculateGBPScore(d) : getCompetitorScore(clientScore) })
+    }
+  } else {
+    // Buscar competidores automáticamente por categoría
+    const autoComps = await searchCompetitors(formData.categoria, formData.zona, formData.nombre_negocio, 2)
+    autoComps.forEach(p => {
+      const d = normalizePlaceData(p)
+      competidoresData.push({ name: d.nombre, data: d, score: calculateGBPScore(d) })
+    })
+  }
+
+  // Fallback si no se encontraron competidores
+  if (competidoresData.length === 0) {
+    competidoresData.push(
+      { name: 'Competidor 1 (zona)', data: null, score: getCompetitorScore(clientScore) },
+      { name: 'Competidor 2 (zona)', data: null, score: getCompetitorScore(clientScore) }
+    )
+  }
+
+  // ─── 3. Construir ventajas/debilidades de competidores con datos reales ───
+  function buildCompetitor(comp: typeof competidoresData[0]): CompetidorAuditoria {
+    const diff = comp.score - clientScore
+    const ventajas: string[] = []
+    const debilidades: string[] = []
+
+    if (comp.data && mainData) {
+      // Comparar datos reales
+      if (comp.score > clientScore) ventajas.push(`${diff} puntos más en puntuación`)
+      if (comp.data.fotos_count > (mainData.fotos_count || 0)) ventajas.push(`Más fotos (${comp.data.fotos_count} vs ${mainData.fotos_count})`)
+      if (comp.data.resenas_count > (mainData.resenas_count || 0)) ventajas.push(`${comp.data.resenas_count} reseñas (verificadas)`)
+      if (comp.data.rating > (mainData.rating || 0)) ventajas.push(`Rating ${comp.data.rating}/5 vs ${mainData.rating}/5`)
+      if (comp.data.tiene_web && !mainData.tiene_web) ventajas.push('Tiene web vinculada')
+
+      if (!comp.data.horarios_completos) debilidades.push('Horarios incompletos')
+      if (!comp.data.tiene_descripcion) debilidades.push('Sin descripción editorial')
+      if (comp.data.fotos_count < 5) debilidades.push('Pocas fotos')
+      if (comp.data.resenas_count < 10) debilidades.push('Pocas reseñas')
+    } else {
+      // Fallback simulado
+      ventajas.push(`${Math.abs(diff)} puntos más en puntuación`)
+      ventajas.push(`Más fotos (${getRandomInt(15, 30)} vs ${getRandomInt(2, 8)})`)
+      debilidades.push('Datos no verificados')
+    }
+
+    // Asegurar al menos 1 ventaja y 1 debilidad
+    if (ventajas.length === 0) ventajas.push('Presencia activa en Maps')
+    if (debilidades.length === 0) debilidades.push('Atributos incompletos')
+
+    return {
+      nombre: comp.data?.google_maps_url || comp.name,
+      puntuacion: comp.score,
+      ventajas: ventajas.slice(0, 3),
+      debilidades: debilidades.slice(0, 2),
+      diferencia_puntos: diff,
+    }
+  }
+
+  const competidores = competidoresData.map(buildCompetitor)
+
+  // ─── 4. Generar gaps basados en datos reales ───
+  const gaps = generateGapsFromData(mainData, formData.categoria, competidoresData)
+
+  // ─── 5. Pack recomendado ───
+  const recomendacion_pack = clientScore < 50 ? 'visibilidad_local' : 'autoridad_maps_ia'
+
+  // ─── 6. Resumen ───
+  const mediaCompetidores = competidoresData.length > 0
+    ? Math.round(competidoresData.reduce((acc, c) => acc + c.score, 0) / competidoresData.length)
+    : clientScore + 20
+
+  const dataSource = mainData ? 'datos reales de Google Maps' : 'estimación basada en tu categoría'
+
   const result: AuditResult = {
     id,
     negocio: {
-      nombre: formData.nombre_negocio,
-      direccion: formData.direccion,
+      nombre: mainData?.nombre || formData.nombre_negocio,
+      direccion: mainData?.direccion || formData.direccion,
       zona: formData.zona,
       categoria: formData.categoria,
-      puntuacion: clientBaseScore,
-      fotos_count: getRandomInt(2, 8),
-      resenas_count: getRandomInt(1, 20),
-      posts_gbp: getRandomInt(0, 5),
-      horarios_completos: Math.random() > 0.5,
+      puntuacion: clientScore,
+      fotos_count: mainData?.fotos_count || getRandomInt(2, 8),
+      resenas_count: mainData?.resenas_count || getRandomInt(1, 20),
+      posts_gbp: 0, // Google Places API no devuelve posts
+      horarios_completos: mainData?.horarios_completos ?? Math.random() > 0.5,
     },
-    competidores: [
-      {
-        nombre: formData.competidor1 || 'Competidor 1 (Maps)',
-        puntuacion: competitor1Score,
-        ventajas: [
-          `${competitor1Score - clientBaseScore} puntos más en puntuación`,
-          `Más fotos (${getRandomInt(15, 30)} vs ${getRandomInt(2, 8)})`,
-          `${getRandomInt(2, 5)} posts mensuales (actualizados)`,
-        ],
-        debilidades: Math.random() > 0.5 ? ['Reseñas desactualizadas', 'Horarios incorrectos'] : ['Descripción genérica'],
-        diferencia_puntos: competitor1Score - clientBaseScore,
-      },
-      {
-        nombre: formData.competidor2 || 'Competidor 2 (Maps)',
-        puntuacion: competitor2Score,
-        ventajas: [
-          `${competitor2Score - clientBaseScore} puntos más en puntuación`,
-          `${getRandomInt(30, 60)} reseñas (verificadas)`,
-          `Presencia activa (posts semanales)`,
-        ],
-        debilidades: Math.random() > 0.5 ? ['Ubicación menos central', 'Horario más limitado'] : ['Atributos incompletos'],
-        diferencia_puntos: competitor2Score - clientBaseScore,
-      },
-    ],
+    competidores,
     gaps,
     recomendacion_pack,
-    resumen: `Tu negocio tiene una puntuación de ${clientBaseScore}/100 en Google Maps. Tus competidores obtienen ${Math.round((competitor1Score + competitor2Score) / 2)} puntos. Con un enfoque en ${gaps[0]?.area.toLowerCase() || 'mejora'}, podrías escalar rápidamente.`,
+    resumen: `Análisis basado en ${dataSource}. Tu negocio tiene ${clientScore}/100 puntos. ${mediaCompetidores > clientScore ? `Tus competidores promedian ${mediaCompetidores} puntos — estás ${mediaCompetidores - clientScore} puntos por debajo.` : 'Estás por encima de la media de tu zona.'} Prioridad: ${gaps[0]?.area.toLowerCase() || 'optimización general'}.`,
     created_at: new Date().toISOString(),
-    // Guardar datos de contacto del formulario
     email: formData.email,
     nombre_contacto: formData.nombre_contacto,
     puesto: formData.puesto,
@@ -269,7 +430,7 @@ export async function runAudit(formData: AuditFormData): Promise<AuditResult> {
       direccion: formData.direccion,
       zona: formData.zona,
       categoria: formData.categoria,
-      puntuacion: clientBaseScore,
+      puntuacion: clientScore,
       competidores: result.competidores,
       gaps: result.gaps,
       recomendacion_pack,
