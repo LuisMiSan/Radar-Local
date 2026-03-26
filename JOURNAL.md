@@ -2,7 +2,7 @@
 
 > Generado y mantenido por Sinapsis
 > Proyecto: Radar Local | Inicio: 2026-03-08
-> Ultima actualizacion: 2026-03-25
+> Ultima actualizacion: 2026-03-26
 
 ## Stack
 
@@ -85,6 +85,29 @@
   - *Razon*: Actualmente la auditoria usa datos simulados, necesita datos reales para produccion
   - *Alternativas descartadas*: Scraping (violacion TOS), datos estaticos (no escalable)
 
+### Semana 4 (2026-03-26 → 2026-03-29)
+
+#### 2026-03-26
+- **[STEP]** Fase 6: Sistema de autonomia inteligente para agentes (3 niveles)
+- **[STEP]** Nuevo tipo `NivelAutonomia`: auto_ejecutar | notificar | aprobar
+- **[STEP]** Mapeo de campos GBP a niveles de autonomia (AUTONOMIA_POR_CAMPO)
+- **[STEP]** Helper `getNivelAutonomia()` determina nivel segun tipo + campo + prioridad
+- **[STEP]** `guardarTareasGeneradas()` ahora auto-aprueba tareas segun nivel de autonomia
+- **[STEP]** Nuevo motor de ejecucion: `lib/task-executor.ts` con ejecutores por campo GBP
+- **[STEP]** API routes: `/api/tasks/execute` (cola) y `/api/tasks/approve` (HITL)
+- **[STEP]** Tabla `notificaciones` para avisar al admin de ejecuciones automaticas (nivel notificar)
+- **[STEP]** Prompts de 7 agentes actualizados con campo_gbp correcto para autonomia
+- **[STEP]** Google Places API integrada en auditorias (datos reales de negocios)
+- **[DECISION]** Sistema de 3 niveles de autonomia en vez de HITL total
+  - *Razon*: Con 200 clientes, aprobar TODO manualmente no escala. Auto-ejecutar lo seguro, aprobar solo lo critico.
+  - *Alternativas descartadas*: HITL total (no escalable), full auto (riesgo alto en cambios criticos)
+- **[DECISION]** Mapear autonomia por campo_gbp (no por agente)
+  - *Razon*: Un mismo agente puede generar tareas de distinto riesgo. El campo afectado determina el riesgo, no el agente.
+  - *Alternativas descartadas*: Por agente (impreciso), por prioridad sola (no captura el riesgo del campo)
+- **[DECISION]** Motor de ejecucion con ejecutores placeholder (preparado para GBP API)
+  - *Razon*: La GBP API esta bloqueada por cuota de Google. Los ejecutores simulan la ejecucion pero la arquitectura esta lista para conectar la API real.
+  - *Alternativas descartadas*: Esperar a tener la API (retrasa desarrollo), mock sin arquitectura (hay que rehacer)
+
 ## Decisiones de arquitectura
 
 | Fecha | Decision | Razon | Alternativas |
@@ -98,6 +121,9 @@
 | 2026-03-23 | jsPDF servidor (no Puppeteer) | Sin DOM, Buffer directo, serverless OK | Puppeteer, html2pdf |
 | 2026-03-24 | Vercel para deploy | Integracion nativa Next.js, deploys automaticos | Netlify, Railway |
 | 2026-03-25 | Google Places API para datos reales | Necesidad de datos verificables | Scraping, datos estaticos |
+| 2026-03-26 | 3 niveles autonomia (no HITL total) | Escalabilidad 200+ clientes | HITL total, full auto |
+| 2026-03-26 | Autonomia por campo_gbp (no por agente) | Mismo agente puede tener riesgo variable | Por agente, por prioridad |
+| 2026-03-26 | Ejecutores placeholder para GBP API | API bloqueada, arquitectura lista | Esperar API, mock sin arquitectura |
 
 ## Gotchas encontrados
 
@@ -115,11 +141,12 @@
 
 ## Resumen ejecutivo
 
-**Radar Local** es una plataforma SaaS de posicionamiento local (GEO/AEO/SEO) construida en 3 semanas. El sistema incluye:
+**Radar Local** es una plataforma SaaS de posicionamiento local (GEO/AEO/Map Pack) construida en 3 semanas. El sistema incluye:
 
-- **Panel admin** con dashboard, pipeline CRM (9 estados), gestion de clientes, 11 agentes IA con supervisor, sistema HITL, control de gastos API y reportes mensuales
-- **Journey publico** automatizado: landing → formulario auditoria → resultados con competidores → presupuesto con ROI → email profesional con PDFs adjuntos y CTA WhatsApp
+- **Panel admin** con dashboard, pipeline CRM (9 estados), gestion de clientes, 11 agentes IA con supervisor, sistema de autonomia inteligente (3 niveles), control de gastos API y reportes mensuales
+- **Journey publico** automatizado: landing → formulario auditoria → resultados con competidores reales (Google Places API) → presupuesto con ROI → email profesional con PDFs adjuntos y CTA WhatsApp
 - **Pipeline CRM automatico**: los leads del formulario publico se crean automaticamente en el pipeline y avanzan de estado al enviar presupuesto
-- **Infraestructura**: Supabase (PostgreSQL), Vercel (produccion), GitHub (CI/CD), Resend (emails), Claude API (agentes)
+- **Sistema de autonomia**: Las tareas de bajo riesgo (posts, schemas, FAQs) se auto-ejecutan. Las de riesgo medio se ejecutan y notifican. Las criticas (nombre, direccion, resenas negativas) esperan aprobacion humana.
+- **Infraestructura**: Supabase (PostgreSQL), Vercel (produccion), GitHub (CI/CD), Resend (emails), Claude API (agentes), Google Places API (datos reales)
 
-**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Pendiente integrar Google Places API para datos reales en auditorias. Demo de inversor programada para 26 marzo 2026.
+**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Google Places API integrada para datos reales. Sistema de autonomia implementado. Pendiente: conectar GBP API cuando Google apruebe cuota (ejecutores ya preparados).
