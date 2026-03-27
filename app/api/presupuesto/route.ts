@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
       competidores: auditResult.competidores.map(c => ({
         nombre: c.nombre,
         puntuacion: c.puntuacion,
+        google_maps_url: c.google_maps_url,
       })),
       gaps: auditResult.gaps.map(g => ({
         area: g.area,
