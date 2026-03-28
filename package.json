@@ -24,6 +24,9 @@
     "resend": "^6.9.3",
     "server-only": "^0.0.1"
   },
+  "overrides": {
+    "picomatch": "^4.0.4"
+  },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
