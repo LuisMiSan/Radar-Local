@@ -2,7 +2,7 @@
 
 > Generado y mantenido por Sinapsis
 > Proyecto: Radar Local | Inicio: 2026-03-08
-> Ultima actualizacion: 2026-03-26
+> Ultima actualizacion: 2026-03-28
 
 ## Stack
 
@@ -108,6 +108,35 @@
   - *Razon*: La GBP API esta bloqueada por cuota de Google. Los ejecutores simulan la ejecucion pero la arquitectura esta lista para conectar la API real.
   - *Alternativas descartadas*: Esperar a tener la API (retrasa desarrollo), mock sin arquitectura (hay que rehacer)
 
+#### 2026-03-27
+- **[STEP]** Revision de seguridad: RLS policies actualizadas en Supabase (6 de 7 tablas protegidas)
+- **[STEP]** Migracion SQL de notificaciones ejecutada
+- **[STEP]** Audit writes cambiados de `supabase` (anon) a `supabaseAdmin` (service_role) para fix RLS
+- **[STEP]** Google Places API cost tracking: cada llamada se registra en `uso_api` ($0.032/request)
+- **[STEP]** Notion: reescrita pagina principal como presentacion profesional (para inversores/equipo)
+- **[STEP]** Notion: creada pagina cliente "Para Clientes — Como Trabajamos" (sin jerga tecnica)
+- **[STEP]** Notion: limpieza de datos sensibles en 8+ subpaginas (env vars, ports, IDs, file paths)
+- **[STEP]** Deploy produccion via `npx vercel --prod` (GitHub deploys iban como preview, no production)
+- **[ERROR→FIX]** RLS bloqueaba INSERT en auditorias → cambiar a supabaseAdmin (service_role)
+- **[ERROR→FIX]** Vercel deploys de GitHub eran "preview" (target: null) no "production" → deploy manual
+- **[ERROR→FIX]** Nombre competidores mostraba URLs de Google Maps → fix en buildCompetitor (parcial)
+- **[GOTCHA]** Supabase "leaked password protection" solo disponible en plan Pro
+
+#### 2026-03-28
+- **[STEP]** Fix definitivo nombres competidores: funcion `cleanCompetitorName()` en audit.ts
+- **[STEP]** Nuevo campo `google_maps_url` en CompetidorAuditoria para URLs reales de Maps
+- **[STEP]** Frontend usa `googleMapsUri` real de la API (no construye URLs artificiales)
+- **[STEP]** Logging debug en `normalizePlaceData` y `runAudit` para diagnosticar API response
+- **[STEP]** Rediseno completo email auditoria+presupuesto: HTML con tables, circulos de puntuacion, badges de impacto
+- **[STEP]** Safety net `cleanName()` en email.ts para limpiar nombres URL de auditorias antiguas
+- **[STEP]** Deploy a produccion via GitHub push → Vercel auto-deploy
+- **[STEP]** Analisis agente NAP: confirmado que es simulacion pura (mock data o Claude estimando)
+- **[ERROR→FIX]** Nombres competidores en email seguian siendo URLs → cleanName() + rediseno template
+- **[ERROR→FIX]** Links Google Maps en email no correspondian a negocios reales → usar googleMapsUri de API
+- **[DECISION]** Rediseno email con tables HTML (no flexbox/div)
+  - *Razon*: Gmail y Outlook no soportan flexbox en emails. Tables son el estandar para email HTML.
+  - *Alternativas descartadas*: CSS moderno con flexbox (incompatible), frameworks email como MJML (dependencia extra)
+
 ## Decisiones de arquitectura
 
 | Fecha | Decision | Razon | Alternativas |
@@ -124,6 +153,7 @@
 | 2026-03-26 | 3 niveles autonomia (no HITL total) | Escalabilidad 200+ clientes | HITL total, full auto |
 | 2026-03-26 | Autonomia por campo_gbp (no por agente) | Mismo agente puede tener riesgo variable | Por agente, por prioridad |
 | 2026-03-26 | Ejecutores placeholder para GBP API | API bloqueada, arquitectura lista | Esperar API, mock sin arquitectura |
+| 2026-03-28 | Tables HTML para emails (no flexbox) | Gmail/Outlook no soportan flexbox | CSS moderno, MJML |
 
 ## Gotchas encontrados
 
@@ -138,6 +168,11 @@
 | 2026-03-23 | python3 no disponible en Windows | Usar `node -e` para parsing JSON |
 | 2026-03-24 | Variable no usada rompe build Vercel | Eliminar de destructuring |
 | 2026-03-24 | `.vercel` duplicado en .gitignore | Limpiar duplicado |
+| 2026-03-27 | RLS bloquea INSERT con cliente anon | Usar supabaseAdmin (service_role) |
+| 2026-03-27 | GitHub deploys van como preview | Deploy manual con `vercel --prod` |
+| 2026-03-27 | Leaked password protection solo Pro | Documentar, no se puede activar |
+| 2026-03-28 | Nombres competidores son URLs de Maps | cleanCompetitorName() + cleanName() |
+| 2026-03-28 | Gmail/Outlook no soportan flexbox | Usar tables HTML en emails |
 
 ## Resumen ejecutivo
 
@@ -149,4 +184,4 @@
 - **Sistema de autonomia**: Las tareas de bajo riesgo (posts, schemas, FAQs) se auto-ejecutan. Las de riesgo medio se ejecutan y notifican. Las criticas (nombre, direccion, resenas negativas) esperan aprobacion humana.
 - **Infraestructura**: Supabase (PostgreSQL), Vercel (produccion), GitHub (CI/CD), Resend (emails), Claude API (agentes), Google Places API (datos reales)
 
-**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Google Places API integrada para datos reales. Sistema de autonomia implementado. Pendiente: conectar GBP API cuando Google apruebe cuota (ejecutores ya preparados).
+**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Google Places API integrada con datos reales y tracking de costes. Auditorias muestran competidores reales con nombres y enlaces correctos de Google Maps. Email profesional rediseñado con compatibilidad Gmail/Outlook. Sistema de autonomia implementado. Los 11 agentes funcionan como framework (orquestacion, tareas, autonomia) pero su logica de negocio es simulada — necesitan integracion con APIs externas reales. Pendiente: conectar GBP API cuando Google apruebe cuota, hacer agentes funcionales con datos reales, resolver 9 vulnerabilidades Dependabot.
