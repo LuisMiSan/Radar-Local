@@ -155,6 +155,50 @@ export async function getContenidoStats(clienteId: string): Promise<{
   return { total: data.length, por_tipo, por_categoria, por_estado, voz_total }
 }
 
+// ── Actualizar contenido (edición manual) ─────────────────────
+
+export async function actualizarContenido(
+  contenidoId: string,
+  campos: {
+    titulo?: string
+    contenido?: string
+    contenido_json?: Record<string, unknown> | null
+  }
+): Promise<boolean> {
+  if (!supabaseAdmin) return false
+
+  const { error } = await supabaseAdmin
+    .from('contenido_generado')
+    .update({
+      ...campos,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', contenidoId)
+
+  if (error) {
+    console.error('[content-library] Error actualizando:', error)
+    return false
+  }
+
+  return true
+}
+
+// ── Descartar contenido ───────────────────────────────────────
+
+export async function descartarContenido(contenidoId: string): Promise<boolean> {
+  if (!supabaseAdmin) return false
+
+  const { error } = await supabaseAdmin
+    .from('contenido_generado')
+    .update({
+      estado: 'descartado',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', contenidoId)
+
+  return !error
+}
+
 // ── Marcar como publicado ─────────────────────────────────────
 
 export async function marcarPublicado(

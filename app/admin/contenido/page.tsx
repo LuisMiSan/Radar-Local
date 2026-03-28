@@ -17,6 +17,10 @@ import {
   Zap,
   Filter,
   Search,
+  Pencil,
+  Save,
+  X,
+  Trash2,
 } from 'lucide-react'
 
 interface Contenido {
@@ -78,6 +82,10 @@ export default function ContenidoPage() {
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitulo, setEditTitulo] = useState('')
+  const [editContenido, setEditContenido] = useState('')
+  const [saving, setSaving] = useState(false)
 
   // Cargar clientes
   useEffect(() => {
@@ -145,6 +153,58 @@ export default function ContenidoPage() {
     navigator.clipboard.writeText(text)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  // Empezar a editar
+  function handleStartEdit(item: Contenido) {
+    setEditingId(item.id)
+    setEditTitulo(item.titulo)
+    setEditContenido(item.contenido)
+  }
+
+  // Cancelar edición
+  function handleCancelEdit() {
+    setEditingId(null)
+    setEditTitulo('')
+    setEditContenido('')
+  }
+
+  // Guardar edición
+  async function handleSaveEdit(contenidoId: string) {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/contenido', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contenidoId, titulo: editTitulo, contenido: editContenido }),
+      })
+      if (res.ok) {
+        // Actualizar localmente sin recargar todo
+        setContenidos(prev =>
+          prev.map(c =>
+            c.id === contenidoId
+              ? { ...c, titulo: editTitulo, contenido: editContenido }
+              : c
+          )
+        )
+        setEditingId(null)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Descartar contenido
+  async function handleDescartar(contenidoId: string) {
+    if (!confirm('¿Descartar este contenido? No se eliminará, pero se marcará como descartado.')) return
+    await fetch('/api/contenido', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contenidoId, accion: 'descartar' }),
+    })
+    loadData()
   }
 
   // Marcar como publicado
@@ -293,43 +353,106 @@ export default function ContenidoPage() {
 
                 {isExpanded && (
                   <div className="border-t border-neutral-100 p-5 space-y-4">
-                    {/* Contenido completo */}
-                    <div className="bg-neutral-50 rounded-xl p-4">
-                      <pre className="text-sm text-neutral-800 whitespace-pre-wrap font-sans leading-relaxed">
-                        {item.contenido}
-                      </pre>
-                    </div>
-
-                    {/* Acciones */}
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => handleCopy(item.id, item.contenido)}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-xs font-medium transition-colors"
-                      >
-                        {copiedId === item.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copiedId === item.id ? 'Copiado' : 'Copiar'}
-                      </button>
-
-                      {item.estado !== 'publicado' && (
-                        <>
-                          <button onClick={() => handlePublicar(item.id, 'web')}
-                            className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition-colors">
-                            🌐 Marcar publicado en web
+                    {editingId === item.id ? (
+                      /* ─── MODO EDICIÓN ─── */
+                      <>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1 block">Título</label>
+                            <input
+                              type="text"
+                              value={editTitulo}
+                              onChange={e => setEditTitulo(e.target.value)}
+                              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1 block">Contenido</label>
+                            <textarea
+                              value={editContenido}
+                              onChange={e => setEditContenido(e.target.value)}
+                              rows={Math.max(6, editContenido.split('\n').length + 2)}
+                              className="w-full px-4 py-3 border border-neutral-300 rounded-xl text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-y"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSaveEdit(item.id)}
+                            disabled={saving}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent/90 disabled:opacity-50 transition-colors"
+                          >
+                            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            {saving ? 'Guardando...' : 'Guardar cambios'}
                           </button>
-                          <button onClick={() => handlePublicar(item.id, 'gbp')}
-                            className="flex items-center gap-1.5 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-medium transition-colors">
-                            📍 Marcar publicado en GBP
+                          <button
+                            onClick={handleCancelEdit}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            Cancelar
                           </button>
-                        </>
-                      )}
-                    </div>
+                        </div>
+                      </>
+                    ) : (
+                      /* ─── MODO LECTURA ─── */
+                      <>
+                        <div className="bg-neutral-50 rounded-xl p-4">
+                          <pre className="text-sm text-neutral-800 whitespace-pre-wrap font-sans leading-relaxed">
+                            {item.contenido}
+                          </pre>
+                        </div>
 
-                    {/* Meta */}
-                    <div className="flex gap-4 text-xs text-neutral-400">
-                      <span>Agente: {item.agente}</span>
-                      {item.optimizado_para && <span>Optimizado: {item.optimizado_para}</span>}
-                      {item.publicado_en && <span>Publicado en: {item.publicado_en}</span>}
-                    </div>
+                        {/* Acciones */}
+                        <div className="flex flex-wrap gap-2">
+                          {item.estado !== 'publicado' && (
+                            <button
+                              onClick={() => handleStartEdit(item)}
+                              className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-medium transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Editar
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleCopy(item.id, item.contenido)}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            {copiedId === item.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copiedId === item.id ? 'Copiado' : 'Copiar'}
+                          </button>
+
+                          {item.estado !== 'publicado' && (
+                            <>
+                              <button onClick={() => handlePublicar(item.id, 'web')}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition-colors">
+                                🌐 Publicado en web
+                              </button>
+                              <button onClick={() => handlePublicar(item.id, 'gbp')}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-medium transition-colors">
+                                📍 Publicado en GBP
+                              </button>
+
+                              <div className="flex-1" />
+
+                              <button onClick={() => handleDescartar(item.id)}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Descartar
+                              </button>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Meta */}
+                        <div className="flex gap-4 text-xs text-neutral-400">
+                          <span>Agente: {item.agente}</span>
+                          {item.optimizado_para && <span>Optimizado: {item.optimizado_para}</span>}
+                          {item.publicado_en && <span>Publicado en: {item.publicado_en}</span>}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
