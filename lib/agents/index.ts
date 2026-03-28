@@ -4,6 +4,7 @@ import { getProfileByClient } from '@/lib/profiles'
 import { createTask, updateTask } from '@/lib/tasks'
 import { registrarGastoAgente } from '@/lib/gastos'
 import { guardarTareasGeneradas } from '@/lib/tareas-ejecucion'
+import { searchPlace, searchCompetitors, normalizePlaceData, calculateGBPScore } from '@/lib/google-places'
 import { getAgentConfig } from './config'
 import { runAgentExecution } from './runner'
 import type { AgentResult } from './types'
@@ -50,7 +51,37 @@ export async function runAgent(
   // 4. Obtener perfil GBP (puede ser null)
   const perfilGbp = await getProfileByClient(clienteId)
 
-  // 5. Registrar tarea como en_progreso
+  // 5. Buscar datos reales de Google Places (para agentes que los necesitan)
+  const agentesConPlaces: Agente[] = ['auditor_gbp', 'optimizador_nap', 'gestor_resenas', 'keywords_locales', 'generador_reporte']
+  let googlePlacesData = null
+  let googlePlacesScore = null
+  let competidoresData: { nombre: string; data: import('@/lib/google-places').PlaceData; score: number }[] = []
+
+  if (agentesConPlaces.includes(agente) && cliente.negocio) {
+    try {
+      const zona = cliente.direccion?.split(',').pop()?.trim() || ''
+      const mainPlace = await searchPlace(cliente.negocio, zona)
+      if (mainPlace) {
+        googlePlacesData = normalizePlaceData(mainPlace)
+        googlePlacesScore = calculateGBPScore(googlePlacesData)
+        console.log(`[${agente}] Google Places: ${googlePlacesData.nombre} — ${googlePlacesScore}/100`)
+      }
+
+      // Para auditor_gbp, buscar competidores también
+      if (agente === 'auditor_gbp' && perfilGbp?.categoria) {
+        const comps = await searchCompetitors(perfilGbp.categoria, zona, cliente.negocio, 3)
+        competidoresData = comps.map(p => {
+          const d = normalizePlaceData(p)
+          return { nombre: d.nombre, data: d, score: calculateGBPScore(d) }
+        })
+        console.log(`[${agente}] ${competidoresData.length} competidores encontrados`)
+      }
+    } catch (e) {
+      console.error(`[${agente}] Error buscando Google Places:`, e)
+    }
+  }
+
+  // 6. Registrar tarea como en_progreso
   const tarea = await createTask({
     cliente_id: clienteId,
     agente,
@@ -59,8 +90,15 @@ export async function runAgent(
     resultado: null,
   })
 
-  // 6. Ejecutar el agente
-  const result = await runAgentExecution(agente, { cliente, perfilGbp, previousResults })
+  // 7. Ejecutar el agente con datos reales
+  const result = await runAgentExecution(agente, {
+    cliente,
+    perfilGbp,
+    previousResults,
+    googlePlacesData,
+    googlePlacesScore,
+    competidoresData: competidoresData.length > 0 ? competidoresData : undefined,
+  })
 
   // 7. Registrar consumo de API (no bloquea)
   registrarGastoAgente(

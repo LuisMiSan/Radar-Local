@@ -11,8 +11,9 @@ import { loadKnowledge } from './knowledge-loader'
 // ── Contexto del cliente (compartido) ───────────────────────
 
 function buildClientContext(input: AgentInput): string {
-  const { cliente, perfilGbp } = input
-  return `
+  const { cliente, perfilGbp, googlePlacesData, googlePlacesScore, competidoresData } = input
+
+  let context = `
 ## Datos del cliente
 - Negocio: ${cliente.negocio}
 - Nombre de contacto: ${cliente.nombre}
@@ -20,7 +21,7 @@ function buildClientContext(input: AgentInput): string {
 - Web: ${cliente.web ?? 'No disponible'}
 - Pack contratado: ${cliente.pack ?? 'Sin pack'}
 
-## Perfil Google Business Profile
+## Perfil Google Business Profile (datos internos)
 - Nombre GBP: ${perfilGbp?.nombre_gbp ?? 'No configurado'}
 - Categoría: ${perfilGbp?.categoria ?? 'No disponible'}
 - Descripción: ${perfilGbp?.descripcion ?? 'No disponible'}
@@ -31,8 +32,57 @@ function buildClientContext(input: AgentInput): string {
   - Nombre: ${perfilGbp?.nap_nombre ?? 'No disponible'}
   - Dirección: ${perfilGbp?.nap_direccion ?? 'No disponible'}
   - Teléfono: ${perfilGbp?.nap_telefono ?? 'No disponible'}
-- URL Google Maps: ${perfilGbp?.url_maps ?? 'No disponible'}
-`.trim()
+- URL Google Maps: ${perfilGbp?.url_maps ?? 'No disponible'}`
+
+  // Añadir datos reales verificados de Google Places API
+  if (googlePlacesData) {
+    context += `
+
+## DATOS REALES DE GOOGLE (verificados via Google Places API)
+IMPORTANTE: Estos datos son REALES, extraídos directamente de Google. Usa estos valores como fuente de verdad para tu análisis.
+- Nombre en Google: ${googlePlacesData.nombre}
+- Dirección en Google: ${googlePlacesData.direccion}
+- Rating actual: ${googlePlacesData.rating}/5
+- Número de reseñas: ${googlePlacesData.resenas_count}
+- Número de fotos: ${googlePlacesData.fotos_count}
+- Horarios completos: ${googlePlacesData.horarios_completos ? 'Sí' : 'No'}
+- Tiene website vinculado: ${googlePlacesData.tiene_web ? 'Sí' : 'No'}
+- Tiene descripción editorial: ${googlePlacesData.tiene_descripcion ? 'Sí' : 'No'}
+- Estado del negocio: ${googlePlacesData.business_status}
+- URL Google Maps: ${googlePlacesData.google_maps_url}
+- **Puntuación Radar Local: ${googlePlacesScore ?? 'N/A'}/100** (fórmula ponderada: rating 25pts + reseñas 25pts + fotos 20pts + horarios 10pts + web 10pts + descripción 10pts)`
+  }
+
+  // Añadir datos de competidores reales
+  if (competidoresData && competidoresData.length > 0) {
+    context += `
+
+## COMPETIDORES REALES (verificados via Google Places API)
+Datos reales de los competidores más relevantes en la misma zona y categoría:`
+
+    competidoresData.forEach((comp, i) => {
+      context += `
+
+### Competidor ${i + 1}: ${comp.nombre}
+- Rating: ${comp.data.rating}/5
+- Reseñas: ${comp.data.resenas_count}
+- Fotos: ${comp.data.fotos_count}
+- Horarios completos: ${comp.data.horarios_completos ? 'Sí' : 'No'}
+- Tiene web: ${comp.data.tiene_web ? 'Sí' : 'No'}
+- Tiene descripción: ${comp.data.tiene_descripcion ? 'Sí' : 'No'}
+- **Puntuación Radar: ${comp.score}/100**`
+    })
+
+    const avgScore = Math.round(competidoresData.reduce((s, c) => s + c.score, 0) / competidoresData.length)
+    context += `
+
+### Comparativa
+- Media competidores: ${avgScore}/100
+- Tu puntuación: ${googlePlacesScore ?? 'N/A'}/100
+- Diferencia: ${googlePlacesScore ? (googlePlacesScore - avgScore) : 'N/A'} puntos`
+  }
+
+  return context.trim()
 }
 
 // ── Knowledge que usa cada agente ───────────────────────────

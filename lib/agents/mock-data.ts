@@ -3,80 +3,91 @@ import type { AgentInput, AgentResult } from './types'
 
 // Genera resultado mock para cada agente (sin API key)
 export function generateMockResult(agente: Agente, input: AgentInput): AgentResult {
-  const { cliente, perfilGbp } = input
+  const { cliente, perfilGbp, googlePlacesData, googlePlacesScore } = input
   const nombre = perfilGbp?.nombre_gbp ?? cliente.negocio
 
+  // Usar datos reales si están disponibles, sino fallback
+  const realFotos = googlePlacesData?.fotos_count ?? perfilGbp?.fotos_count ?? 0
+  const realResenas = googlePlacesData?.resenas_count ?? perfilGbp?.resenas_count ?? 0
+  const realRating = googlePlacesData?.rating ?? perfilGbp?.puntuacion ?? 0
+  const realScore = googlePlacesScore ?? 72
+  const tieneHorarios = googlePlacesData?.horarios_completos ?? true
+  const tieneWeb = googlePlacesData?.tiene_web ?? !!cliente.web
+  const tieneDescripcion = googlePlacesData?.tiene_descripcion ?? !!perfilGbp?.descripcion
+  const dataSource = googlePlacesData ? 'datos reales de Google Places API' : 'datos estimados (sin conexión a Google Places)'
+
   const mockGenerators: Record<Agente, () => { datos: Record<string, unknown>; resumen: string }> = {
-    auditor_gbp: () => ({
-      datos: {
-        puntuacion: 72,
-        items: [
-          { campo: 'Nombre GBP', estado: 'ok', detalle: 'Coincide con NAP' },
-          { campo: 'Categoría', estado: 'ok', detalle: 'Categoría principal correcta' },
-          { campo: 'Descripción', estado: 'mejorable', detalle: 'Falta mención de zona/barrio' },
-          { campo: 'Horarios', estado: 'ok', detalle: 'Actualizados' },
-          { campo: 'Fotos', estado: 'mejorable', detalle: `Solo ${perfilGbp?.fotos_count ?? 0} fotos, recomendado 20+` },
-          { campo: 'Reseñas', estado: 'ok', detalle: `${perfilGbp?.resenas_count ?? 0} reseñas con ${perfilGbp?.puntuacion ?? 0} estrellas` },
-          { campo: 'Posts GBP', estado: 'critico', detalle: 'Sin posts en últimos 30 días' },
-          { campo: 'Atributos', estado: 'mejorable', detalle: 'Faltan atributos de accesibilidad' },
-        ],
-        problemas: [
-          'Descripción no menciona zona geográfica específica',
-          'Pocas fotos para la categoría',
-          'Sin posts GBP recientes',
-          'Faltan atributos de accesibilidad y servicios',
-        ],
-        recomendaciones_map_pack: [
-          'Añadir zona/barrio en la descripción del GBP',
-          'Subir al menos 10 fotos más (exterior, interior, equipo)',
-          'Publicar 1 post GBP semanal con keywords locales',
-          'Completar todos los atributos disponibles',
-        ],
-        tareas: [
-          {
-            titulo: 'Reescribir descripción del GBP con zona geográfica',
-            descripcion: 'La descripción actual no menciona la zona/barrio. Añadir ubicación específica mejora el ranking en búsquedas locales.',
-            categoria: 'mejora',
-            tipo: 'revision',
-            prioridad: 'alta',
-            campo_gbp: 'descripcion',
-            valor_actual: perfilGbp?.descripcion ?? 'Sin descripción',
-            valor_propuesto: `${perfilGbp?.descripcion ?? nombre} — Ubicados en ${cliente.direccion ?? 'tu zona'}, ofrecemos atención personalizada con los mejores profesionales de la zona.`,
-          },
-          {
-            titulo: 'Subir fotos del local con descripciones para Gemini',
-            descripcion: `Solo hay ${perfilGbp?.fotos_count ?? 0} fotos. Se necesitan al menos 20 fotos geotaggeadas con descripciones que Gemini pueda leer.`,
-            categoria: 'creacion',
-            tipo: 'manual',
-            prioridad: 'alta',
-            campo_gbp: 'fotos',
-            valor_actual: `${perfilGbp?.fotos_count ?? 0} fotos`,
-            valor_propuesto: '20+ fotos: exterior, interior, equipo, productos/servicios',
-          },
-          {
-            titulo: 'Crear y publicar primer post GBP semanal',
-            descripcion: 'No hay posts recientes. Publicar 1 post semanal con keywords locales mejora la actividad del perfil y el ranking.',
-            categoria: 'creacion',
-            tipo: 'auto',
-            prioridad: 'media',
-            campo_gbp: 'posts',
-            valor_actual: 'Sin posts recientes',
-            valor_propuesto: 'Post con keyword local + CTA de llamada o ruta',
-          },
-          {
-            titulo: 'Completar atributos de accesibilidad y servicios',
-            descripcion: 'Los atributos del perfil están incompletos. Completarlos mejora la relevancia en búsquedas filtradas.',
-            categoria: 'mejora',
-            tipo: 'auto',
-            prioridad: 'baja',
-            campo_gbp: 'atributos',
-            valor_actual: 'Atributos parcialmente completados',
-            valor_propuesto: 'Todos los atributos relevantes completados',
-          },
-        ],
-      },
-      resumen: `Auditoría GBP de ${nombre}: puntuación 72/100. 4 problemas detectados, 4 tareas ejecutables generadas.`,
-    }),
+    auditor_gbp: () => {
+      // Generar items dinámicos basados en datos reales
+      type EstadoItem = 'ok' | 'mejorable' | 'critico'
+      const items: { campo: string; estado: EstadoItem; detalle: string }[] = [
+        { campo: 'Nombre GBP', estado: 'ok', detalle: `"${googlePlacesData?.nombre ?? nombre}" — Coincide con NAP` },
+        { campo: 'Categoría', estado: perfilGbp?.categoria ? 'ok' : 'critico', detalle: perfilGbp?.categoria ? `Categoría: ${perfilGbp.categoria}` : 'Sin categoría configurada' },
+        { campo: 'Descripción', estado: tieneDescripcion ? 'mejorable' : 'critico', detalle: tieneDescripcion ? 'Tiene descripción, pero revisar que mencione zona/barrio' : 'Sin descripción editorial en Google — impacto alto en SEO local' },
+        { campo: 'Horarios', estado: tieneHorarios ? 'ok' : 'mejorable', detalle: tieneHorarios ? 'Horarios completos configurados' : 'Horarios incompletos — Google penaliza perfiles sin horarios' },
+        { campo: 'Fotos', estado: realFotos >= 20 ? 'ok' : realFotos >= 5 ? 'mejorable' : 'critico', detalle: `${realFotos} fotos — ${realFotos >= 20 ? 'buen nivel' : `recomendado 20+, faltan ${20 - realFotos}`}` },
+        { campo: 'Reseñas', estado: realResenas >= 20 ? 'ok' : realResenas >= 5 ? 'mejorable' : 'critico', detalle: `${realResenas} reseñas con ${realRating}/5 estrellas` },
+        { campo: 'Website', estado: tieneWeb ? 'ok' : 'mejorable', detalle: tieneWeb ? 'Web vinculada al perfil' : 'Sin web vinculada — pérdida de señal de autoridad' },
+        { campo: 'Posts GBP', estado: 'critico', detalle: 'Sin actividad de posts detectada — Google recomienda actualizaciones semanales' },
+      ]
+
+      // Generar problemas basados en datos reales
+      const problemas: string[] = []
+      if (!tieneDescripcion) problemas.push('Sin descripción editorial en Google — campo vacío que impacta ranking')
+      if (realFotos < 20) problemas.push(`Solo ${realFotos} fotos (recomendado 20+) — ${realFotos < 5 ? 'impacto CRÍTICO' : 'impacto alto'} en visibilidad`)
+      if (realResenas < 10) problemas.push(`Solo ${realResenas} reseñas — competidores de la zona suelen tener 20+`)
+      if (!tieneHorarios) problemas.push('Horarios incompletos — Google prioriza perfiles con horarios verificados')
+      if (!tieneWeb) problemas.push('Sin website vinculado — pérdida de señal de autoridad para el algoritmo')
+      if (realRating < 4.0 && realResenas > 0) problemas.push(`Rating ${realRating}/5 — por debajo del umbral competitivo (4.0+)`)
+      if (problemas.length === 0) problemas.push('Perfil en buen estado general, optimizable en detalles')
+
+      // Generar tareas ejecutables basadas en problemas reales
+      const tareas = []
+      if (!tieneDescripcion || true) { // Siempre sugerir mejorar descripción
+        tareas.push({
+          titulo: 'Reescribir descripción del GBP con zona geográfica',
+          descripcion: `${!tieneDescripcion ? 'No hay descripción editorial.' : 'La descripción existe pero puede optimizarse.'} Añadir ubicación específica y keywords locales mejora el ranking.`,
+          categoria: 'mejora', tipo: 'auto', prioridad: 'alta', campo_gbp: 'descripcion',
+          valor_actual: perfilGbp?.descripcion ?? 'Sin descripción',
+          valor_propuesto: `${nombre} — Ubicados en ${cliente.direccion ?? 'tu zona'}, ofrecemos atención personalizada con los mejores profesionales de la zona.`,
+        })
+      }
+      if (realFotos < 20) {
+        tareas.push({
+          titulo: `Subir ${20 - realFotos} fotos del local con descripciones`,
+          descripcion: `Actualmente ${realFotos} fotos. Google recomienda mínimo 20 fotos geotaggeadas con descripciones alt-text para Gemini.`,
+          categoria: 'creacion', tipo: 'manual', prioridad: realFotos < 5 ? 'critica' : 'alta', campo_gbp: 'fotos',
+          valor_actual: `${realFotos} fotos`,
+          valor_propuesto: '20+ fotos: exterior, interior, equipo, productos/servicios',
+        })
+      }
+      tareas.push({
+        titulo: 'Crear y publicar post GBP semanal',
+        descripcion: 'Publicar 1 post semanal con keywords locales mejora la actividad del perfil y el ranking.',
+        categoria: 'creacion', tipo: 'auto', prioridad: 'media', campo_gbp: 'posts',
+        valor_actual: 'Sin posts recientes', valor_propuesto: 'Post con keyword local + CTA',
+      })
+      if (!tieneWeb) {
+        tareas.push({
+          titulo: 'Vincular website al perfil GBP',
+          descripcion: 'No hay web vinculada. Añadir URL del sitio web mejora la autoridad del perfil.',
+          categoria: 'correccion', tipo: 'revision', prioridad: 'alta', campo_gbp: 'web',
+          valor_actual: 'Sin web', valor_propuesto: cliente.web ?? 'URL del sitio web del negocio',
+        })
+      }
+
+      return {
+        datos: {
+          puntuacion: realScore,
+          fuente_datos: dataSource,
+          items,
+          problemas,
+          recomendaciones_map_pack: problemas.map(p => p.includes('fotos') ? 'Subir fotos geotaggeadas con descripciones' : p.includes('reseñas') ? 'Implementar estrategia de reseñas' : p.includes('descripción') ? 'Escribir descripción optimizada con zona y keywords' : p.includes('horarios') ? 'Completar horarios de apertura' : 'Optimizar perfil GBP'),
+          tareas,
+        },
+        resumen: `Auditoría GBP de ${nombre} (${dataSource}): puntuación ${realScore}/100. ${problemas.length} problemas detectados, ${tareas.length} tareas ejecutables generadas.`,
+      }
+    },
 
     optimizador_nap: () => ({
       datos: {

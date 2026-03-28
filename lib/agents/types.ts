@@ -1,11 +1,16 @@
 import type { Agente, Cliente, Pack, PerfilGBP, TipoEjecucion, PrioridadTarea, CategoriaEjecucion } from '@/types'
+import type { PlaceData } from '@/lib/google-places'
 
 // Entrada para todos los agentes
 export interface AgentInput {
   cliente: Cliente
   perfilGbp: PerfilGBP | null
   previousResults?: AgentResult[]
-  modo?: 'auditoria' | 'ejecucion'  // NUEVO: qué modo de operación
+  modo?: 'auditoria' | 'ejecucion'
+  // Datos reales de Google Places API (verificados)
+  googlePlacesData?: PlaceData | null
+  googlePlacesScore?: number | null
+  competidoresData?: { nombre: string; data: PlaceData; score: number }[]
 }
 
 // Uso de tokens de la API
