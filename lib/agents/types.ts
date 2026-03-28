@@ -11,6 +11,8 @@ export interface AgentInput {
   googlePlacesData?: PlaceData | null
   googlePlacesScore?: number | null
   competidoresData?: { nombre: string; data: PlaceData; score: number }[]
+  // Memoria del agente (historial de ejecuciones previas)
+  memoryContext?: string
 }
 
 // Uso de tokens de la API

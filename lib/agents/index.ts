@@ -5,6 +5,7 @@ import { createTask, updateTask } from '@/lib/tasks'
 import { registrarGastoAgente } from '@/lib/gastos'
 import { guardarTareasGeneradas } from '@/lib/tareas-ejecucion'
 import { searchPlace, searchCompetitors, normalizePlaceData, calculateGBPScore } from '@/lib/google-places'
+import { loadAgentMemory, saveAgentMemory, formatMemoryForPrompt } from '@/lib/agent-memory'
 import { getAgentConfig } from './config'
 import { runAgentExecution } from './runner'
 import type { AgentResult } from './types'
@@ -81,7 +82,19 @@ export async function runAgent(
     }
   }
 
-  // 6. Registrar tarea como en_progreso
+  // 6. Cargar memoria del agente (historial de ejecuciones previas)
+  let memoryContext: string | undefined
+  try {
+    const memory = await loadAgentMemory(clienteId, agente)
+    memoryContext = formatMemoryForPrompt(memory)
+    if (memory.ejecuciones_previas.length > 0) {
+      console.log(`[${agente}] Memoria cargada: ${memory.ejecuciones_previas.length} ejecuciones previas, ${memory.tareas_pendientes_count} tareas pendientes`)
+    }
+  } catch (e) {
+    console.error(`[${agente}] Error cargando memoria (continuando sin ella):`, e)
+  }
+
+  // 7. Registrar tarea como en_progreso
   const tarea = await createTask({
     cliente_id: clienteId,
     agente,
@@ -90,7 +103,7 @@ export async function runAgent(
     resultado: null,
   })
 
-  // 7. Ejecutar el agente con datos reales
+  // 8. Ejecutar el agente con datos reales + memoria
   const result = await runAgentExecution(agente, {
     cliente,
     perfilGbp,
@@ -98,9 +111,18 @@ export async function runAgent(
     googlePlacesData,
     googlePlacesScore,
     competidoresData: competidoresData.length > 0 ? competidoresData : undefined,
+    memoryContext,
   })
 
-  // 7. Registrar consumo de API (no bloquea)
+  // 9. Guardar memoria de esta ejecución (no bloquea)
+  saveAgentMemory(clienteId, agente, result, {
+    scoreGbp: googlePlacesScore,
+    rating: googlePlacesData?.rating,
+    resenas: googlePlacesData?.resenas_count,
+    fotos: googlePlacesData?.fotos_count,
+  }).catch(e => console.error(`[${agente}] Error guardando memoria:`, e))
+
+  // 10. Registrar consumo de API (no bloquea)
   registrarGastoAgente(
     agente,
     result.usage,
@@ -109,14 +131,14 @@ export async function runAgent(
     previousResults ? 'analisis_completo' : 'individual'
   ).catch((e) => console.error('[gastos] Error registrando:', e))
 
-  // 8. Actualizar tarea con resultado
+  // 11. Actualizar tarea con resultado
   await updateTask(tarea.id, {
     estado: result.estado,
     resultado: result.datos,
     completed_at: result.estado === 'completada' ? new Date().toISOString() : null,
   })
 
-  // 9. Si el agente generó tareas ejecutables, guardarlas con autonomía inteligente
+  // 12. Si el agente generó tareas ejecutables, guardarlas con autonomía inteligente
   if (result.tareas && result.tareas.length > 0) {
     try {
       const { guardadas, resumenAutonomia } = await guardarTareasGeneradas(
@@ -127,7 +149,7 @@ export async function runAgent(
       )
       console.log(`[${agente}] ${guardadas.length} tareas guardadas — 🟢${resumenAutonomia.auto_ejecutar} auto | 🟡${resumenAutonomia.notificar} notificar | 🔴${resumenAutonomia.aprobar} aprobar`)
 
-      // 10. Ejecutar automáticamente las tareas auto-aprobadas
+      // 13. Ejecutar automáticamente las tareas auto-aprobadas
       const tareasAutoAprobadas = guardadas.filter(t => t.estado === 'aprobada')
       if (tareasAutoAprobadas.length > 0) {
         // Importar dinámicamente para evitar dependencia circular

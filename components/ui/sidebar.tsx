@@ -24,6 +24,8 @@ import {
   Shield,
   Loader2,
   TrendingUp,
+  Brain,
+  BookOpen,
 } from 'lucide-react'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -34,6 +36,8 @@ const navItems = [
   { href: '/admin/pipeline', label: 'Pipeline', icon: Kanban },
   { href: '/admin/clientes', label: 'Clientes', icon: Users },
   { href: '/admin/agentes', label: 'Agentes', icon: Bot },
+  { href: '/admin/historial', label: 'Memoria IA', icon: Brain },
+  { href: '/admin/contenido', label: 'Contenido', icon: BookOpen },
   { href: '/admin/tareas', label: 'Tareas', icon: ListChecks },
   { href: '/admin/analisis', label: 'Análisis IA', icon: Zap },
   { href: '/admin/reportes', label: 'Reportes', icon: FileText },

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Play, Loader2, CheckCircle2, AlertCircle, ChevronDown, RotateCcw } from 'lucide-react'
+import { X, Play, Loader2, CheckCircle2, AlertCircle, ChevronDown, RotateCcw, Brain } from 'lucide-react'
+import Link from 'next/link'
 import type { AgentConfig, AgentResult } from '@/lib/agents/types'
 import type { Cliente } from '@/types'
 import AgentReport from './agent-report'
@@ -202,6 +203,15 @@ export default function AgentModal({ agent, clients, onClose }: AgentModalProps)
 
               {/* Informe visual */}
               <AgentReport result={result} />
+
+              {/* Link a historial */}
+              <Link
+                href="/admin/historial"
+                className="flex items-center justify-center gap-2 mt-4 px-4 py-2.5 bg-accent/10 text-accent rounded-xl text-sm font-medium hover:bg-accent/20 transition-colors"
+              >
+                <Brain className="w-4 h-4" />
+                Ver historial completo en Memoria IA
+              </Link>
 
               {/* JSON raw (colapsado) */}
               <details className="group mt-4">

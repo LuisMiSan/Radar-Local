@@ -87,19 +87,19 @@ Datos reales de los competidores más relevantes en la misma zona y categoría:`
 
 // ── Knowledge que usa cada agente ───────────────────────────
 
-type KnowledgeFile = 'map-pack-ranking' | 'geo-aeo-fundamentals' | 'local-seo-spain'
+type KnowledgeFile = 'map-pack-ranking' | 'geo-aeo-fundamentals' | 'local-seo-spain' | 'gemini-voice-search'
 
 const AGENT_KNOWLEDGE: Record<Agente, KnowledgeFile[]> = {
   auditor_gbp:       ['map-pack-ranking', 'local-seo-spain'],
   optimizador_nap:   ['map-pack-ranking', 'local-seo-spain'],
-  keywords_locales:  ['map-pack-ranking', 'local-seo-spain'],
+  keywords_locales:  ['map-pack-ranking', 'gemini-voice-search'],
   gestor_resenas:    ['map-pack-ranking', 'local-seo-spain'],
   redactor_posts_gbp:['map-pack-ranking', 'local-seo-spain'],
-  generador_schema:  ['geo-aeo-fundamentals', 'local-seo-spain'],
-  creador_faq_geo:   ['geo-aeo-fundamentals', 'local-seo-spain'],
-  generador_chunks:  ['geo-aeo-fundamentals', 'local-seo-spain'],
-  tldr_entidad:      ['geo-aeo-fundamentals', 'local-seo-spain'],
-  monitor_ias:       ['geo-aeo-fundamentals', 'local-seo-spain'],
+  generador_schema:  ['gemini-voice-search', 'geo-aeo-fundamentals'],
+  creador_faq_geo:   ['gemini-voice-search', 'geo-aeo-fundamentals'],
+  generador_chunks:  ['gemini-voice-search', 'geo-aeo-fundamentals'],
+  tldr_entidad:      ['gemini-voice-search', 'geo-aeo-fundamentals'],
+  monitor_ias:       ['gemini-voice-search', 'geo-aeo-fundamentals'],
   generador_reporte: ['map-pack-ranking', 'geo-aeo-fundamentals', 'local-seo-spain'],
   supervisor:        [],
 }
@@ -164,18 +164,32 @@ Responde SOLO en JSON válido:
 }`,
 
   keywords_locales: `## Tu tarea
-Investiga keywords relevantes para el negocio con enfoque hiperlocal español:
+Investiga keywords con DOBLE ENFOQUE: Map Pack + Búsqueda por Voz en Gemini.
 
-1. Keywords que activan Map Pack (intención local)
-2. Keywords de búsqueda por voz (preguntas naturales en español)
-3. Volumen estimado mensual realista para España
-4. Intención de búsqueda y potencial
+CONTEXTO: Gemini procesa consultas conversacionales complejas por voz. No solo "dentista Madrid" sino "¿Dónde hay un dentista bueno cerca que atienda urgencias?". Necesitamos AMBOS tipos.
 
-Genera al menos 8-10 keywords variadas.
+GENERA 3 BLOQUES DE KEYWORDS:
+
+1. **Keywords Map Pack** (5 mínimo): Las clásicas que activan el mapa local
+   - Formato: [categoría] + [zona/barrio]
+   - Ejemplo: "clínica dental Chamberí", "dentista urgencias Madrid"
+
+2. **Keywords de Voz / Gemini** (5 mínimo): Preguntas naturales que la gente dice EN VOZ ALTA
+   - Formato: Pregunta completa como la diría alguien hablando
+   - Ejemplo: "¿Dónde hay un dentista bueno cerca de mí?", "¿Cuál es el mejor dentista de Madrid?"
+   - IMPORTANTE: En español de España, lenguaje coloquial
+
+3. **Keywords Long-tail GEO** (3 mínimo): Consultas que activan respuestas de IA
+   - Formato: Consultas complejas que alguien haría a ChatGPT/Gemini
+   - Ejemplo: "dentista en Madrid que use tecnología 3D y tenga buenas reseñas"
+
+Para cada keyword indica: volumen estimado, intención, si activa Map Pack, si es consulta de voz.
 
 Responde SOLO en JSON válido:
 {
-  "keywords": [{"kw": string, "volumen": number, "intent": "local"|"transaccional"|"informacional", "activa_map_pack": boolean, "activa_voz": boolean}]
+  "keywords_map_pack": [{"kw": string, "volumen": number, "intent": "local"|"transaccional", "zona": string}],
+  "keywords_voz": [{"kw": string, "volumen": number, "intent": "local"|"informacional", "plataforma": "gemini"|"siri"|"alexa"|"google_assistant"}],
+  "keywords_geo": [{"kw": string, "volumen": number, "intent": "informacional"|"transaccional", "llm_target": "gemini"|"chatgpt"|"perplexity"}]
 }`,
 
   gestor_resenas: `## Tu tarea
@@ -241,47 +255,79 @@ Responde SOLO en JSON válido:
 }`,
 
   creador_faq_geo: `## Tu tarea
-Genera FAQs optimizadas para IAs generativas y asistentes de voz:
+Genera FAQs optimizadas para BÚSQUEDA POR VOZ en Gemini, Google Assistant, Siri y Alexa.
 
-1. Preguntas que los usuarios REALMENTE hacen a Gemini/ChatGPT sobre este tipo de negocio
-2. Respuestas que posicionen al negocio como la mejor opción local
-3. Plataforma target para cada FAQ
-4. Al menos 5 FAQs variadas
-5. **TAREAS EJECUTABLES**: Una tarea "auto" por cada FAQ
+CONTEXTO CLAVE: Gemini en Google Maps procesa consultas conversacionales complejas. Los usuarios preguntan cosas como "¿Dónde hay un buen [categoría] cerca que esté abierto ahora?" o "¿Me pueden atender sin cita?". Tu trabajo es crear FAQs que Gemini pueda usar como respuesta directa.
 
-Cada tarea con campo_gbp: "faq", tipo: "auto", valor_propuesto: pregunta + respuesta.
+REGLAS PARA FAQs DE VOZ:
+- Preguntas en LENGUAJE CONVERSACIONAL (como habla la gente, NO formal)
+- Preguntas en primera persona: "¿Tienen parking?", "¿Puedo ir sin cita?"
+- Respuestas CORTAS: 40-60 palabras máximo (lo que cabe en una respuesta hablada)
+- Incluir nombre del negocio + zona + dato concreto en cada respuesta
+- Cada FAQ AUTOCONTENIDA (funciona sin contexto adicional)
+- Cubrir las 5 intenciones de voz: encontrar, comparar, horarios, precios, cómo llegar
+
+GENERA EXACTAMENTE 7 FAQs:
+1. FAQ de descubrimiento: "¿Dónde hay un [categoría] bueno en [zona]?"
+2. FAQ de horarios: "¿Está abierto ahora / los sábados / por la tarde?"
+3. FAQ de servicios: "¿Hacen [servicio específico]?"
+4. FAQ de acceso: "¿Tienen parking / es accesible / cómo llego?"
+5. FAQ de comparación: "¿Cuál es el mejor [categoría] en [zona]?"
+6. FAQ de precio/presupuesto: "¿Cuánto cuesta [servicio]?"
+7. FAQ de confianza: "¿Es bueno [negocio]? ¿Qué opinan los clientes?"
+
+Cada FAQ debe ser una TAREA EJECUTABLE tipo "auto" con campo_gbp: "faq".
 
 Responde SOLO en JSON válido:
 {
-  "faqs": [{"pregunta": string, "respuesta": string, "plataforma_target": string}],
+  "faqs": [{"pregunta": string, "respuesta": string, "plataforma_target": "gemini_voz"|"siri"|"alexa"|"google_assistant", "intencion_voz": "descubrimiento"|"horarios"|"servicios"|"acceso"|"comparacion"|"precio"|"confianza"}],
   "tareas": [{"titulo": string, "descripcion": string, "categoria": "creacion", "tipo": "auto", "prioridad": "alta", "campo_gbp": "faq", "valor_actual": null, "valor_propuesto": string}]
 }`,
 
   generador_chunks: `## Tu tarea
-Genera 3 chunks de contenido para el negocio, diseñados para ser citados por LLMs:
+Genera 5 chunks de contenido para que Gemini y otros LLMs citen al negocio en respuestas de VOZ.
 
-1. **Chunk entidad**: Qué es el negocio (definición citable)
-2. **Chunk servicios**: Qué ofrece (para consultas transaccionales)
-3. **Chunk ubicación**: Dónde está (para consultas de navegación/voz)
+CONTEXTO: Cuando alguien pregunta a Gemini "¿Dónde hay un buen [categoría] en [zona]?", Gemini necesita un bloque de texto que pueda LEER EN VOZ ALTA como respuesta. Ese bloque es un chunk.
 
-Cada chunk debe ser auto-contenido: funciona como respuesta independiente sin necesitar contexto adicional.
+REGLAS PARA CHUNKS CITABLES:
+- Cada chunk = 1 respuesta completa a 1 tipo de pregunta de voz
+- Incluir: nombre + categoría + ubicación + diferenciador + dato verificable
+- Lenguaje NATURAL (que suene bien leído en voz alta por un asistente)
+- NO jerga técnica — lenguaje de cliente real
+- 2-4 frases por chunk (40-80 palabras)
+- Formato: "[Negocio] es un [tipo] ubicado en [lugar] que [diferenciador]. Con [dato social], destaca por [valor único]."
 
-**TAREAS EJECUTABLES**: Una tarea "auto" por cada chunk, con campo_gbp: "chunks_contenido".
+GENERA EXACTAMENTE 5 CHUNKS:
+1. **Chunk descubrimiento**: Responde "¿Qué es [negocio]?" — Definición citable
+2. **Chunk servicios**: Responde "¿Qué ofrece [negocio]?" — Servicios principales
+3. **Chunk ubicación**: Responde "¿Dónde está [negocio]?" — Dirección + cómo llegar + zona
+4. **Chunk reputación**: Responde "¿Es bueno [negocio]?" — Rating + reseñas + diferenciador
+5. **Chunk comparativo**: Responde "¿Por qué [negocio] y no otro?" — Propuesta de valor única
+
+Cada chunk es una TAREA EJECUTABLE tipo "auto" con campo_gbp: "chunks_contenido".
 
 Responde SOLO en JSON válido:
 {
-  "chunks": [{"titulo": string, "contenido": string, "optimizado_para": string}],
-  "tareas": [{"titulo": string, "descripcion": string, "categoria": "creacion", "tipo": "auto", "prioridad": "media", "campo_gbp": "chunks_contenido", "valor_actual": null, "valor_propuesto": string}]
+  "chunks": [{"titulo": string, "contenido": string, "optimizado_para": "descubrimiento"|"servicios"|"ubicacion"|"reputacion"|"comparativo", "consulta_voz_ejemplo": string}],
+  "tareas": [{"titulo": string, "descripcion": string, "categoria": "creacion", "tipo": "auto", "prioridad": "alta", "campo_gbp": "chunks_contenido", "valor_actual": null, "valor_propuesto": string}]
 }`,
 
   tldr_entidad: `## Tu tarea
-Genera un perfil de entidad completo del negocio para LLMs:
+Genera el perfil de entidad del negocio optimizado para que Gemini lo use como RESPUESTA DE VOZ.
 
-1. **Resumen**: párrafo de 3-4 frases que define la entidad
-2. **Entidad**: datos estructurados clave
-3. **Atributos**: características distintivas (mínimo 5)
-4. **Fuentes IA**: dónde los LLMs pueden verificar la información
-5. **TAREA EJECUTABLE**: Una tarea "auto" con campo_gbp: "tldr_entidad"
+CONTEXTO: Cuando alguien pregunta a Gemini "¿Qué es [negocio]?" o "Háblame de [negocio]", necesita un resumen que pueda leer en voz alta. Esto es el TL;DR de entidad — la "ficha de identidad" del negocio para las IAs.
+
+FORMATO DEL RESUMEN (máximo 4 frases):
+"[Nombre] es [categoría] en [zona/ciudad]. [Qué lo hace especial/diferente]. Con [rating]/5 en Google Maps y [N] reseñas, [dato de confianza]. Ubicado en [dirección], [horario resumido o contacto]."
+
+GENERA:
+1. **Resumen de voz**: 4 frases que Gemini puede leer literalmente como respuesta hablada
+2. **Entidad estructurada**: nombre, tipo, ubicación, contacto, valoración
+3. **Atributos distintivos**: 5-7 características que diferencian al negocio (verificables)
+4. **Fuentes IA**: dónde los LLMs pueden verificar cada dato (Google Maps, web, directorios)
+5. **Variantes de consulta**: 3 formas en que alguien preguntaría por este negocio por voz
+
+TAREA EJECUTABLE tipo "auto" con campo_gbp: "tldr_entidad".
 
 Responde SOLO en JSON válido:
 {
@@ -289,21 +335,38 @@ Responde SOLO en JSON válido:
   "entidad": {"nombre": string, "tipo": string, "ubicacion": string, "contacto": string, "valoracion": string},
   "atributos": [string],
   "fuentes_ia": [string],
+  "consultas_voz_ejemplo": [string],
   "tareas": [{"titulo": "Publicar TL;DR de entidad", "descripcion": string, "categoria": "creacion", "tipo": "auto", "prioridad": "alta", "campo_gbp": "tldr_entidad", "valor_actual": null, "valor_propuesto": string}]
 }`,
 
   monitor_ias: `## Tu tarea
-Evalúa la presencia estimada del negocio en las principales IAs:
+Evalúa la presencia del negocio en búsquedas por VOZ y en IAs generativas.
 
-1. Para cada plataforma (Gemini, ChatGPT, Perplexity, Siri): ¿es probable que aparezca? ¿en qué posición estimada? ¿en qué contexto?
-2. Resumen de presencia global
-3. Acciones para mejorar presencia donde NO aparece
+CONTEXTO: Gemini en Google Maps usa datos de 300M+ lugares y 500M+ contribuyentes para recomendar negocios. El usuario pregunta por voz cosas como "¿Dónde hay un buen [categoría] cerca?" y Gemini decide a quién recomendar.
 
-NOTA: Esta es una evaluación estimada basada en la optimización del perfil. Indícalo claramente.
+EVALÚA PARA CADA PLATAFORMA:
+1. **Gemini en Maps (VOZ)**: ¿El perfil GBP tiene suficiente calidad para ser recomendado por voz? Evalúa: rating, reseñas, completitud, fotos, horarios, descripción.
+2. **Google Assistant**: ¿Hay contenido tipo featured snippet que pueda leer como respuesta?
+3. **Siri/Apple**: ¿El negocio está en Apple Business Connect?
+4. **ChatGPT**: ¿Hay suficiente presencia web para que lo conozca?
+5. **Perplexity**: ¿Hay fuentes citables actualizadas?
+
+PARA CADA PLATAFORMA genera:
+- Probabilidad de aparición (alta/media/baja/nula) con justificación basada en datos reales
+- Consultas de voz específicas donde debería aparecer (3 por plataforma)
+- Acción concreta y priorizada para mejorar presencia
+
+GENERA TAMBIÉN:
+- **Score de preparación para voz** (0-100): ¿Qué tan preparado está el negocio para ser la respuesta de voz?
+- **Brecha principal**: El factor nº1 que le impide ser recomendado
+- **Quick win**: La acción de mayor impacto con menor esfuerzo
 
 Responde SOLO en JSON válido:
 {
-  "plataformas": [{"nombre_plataforma": string, "mencionado": boolean, "posicion": number|null, "contexto": string, "accion_mejora": string, "fecha": string}],
+  "score_voz": number,
+  "brecha_principal": string,
+  "quick_win": string,
+  "plataformas": [{"nombre_plataforma": string, "mencionado": boolean, "probabilidad": "alta"|"media"|"baja"|"nula", "posicion": number|null, "contexto": string, "consultas_voz": [string], "accion_mejora": string}],
   "presencia_global": string
 }`,
 
@@ -344,7 +407,10 @@ export function buildPrompt(agente: Agente, input: AgentInput): string {
   // 4. Tarea específica
   const task = AGENT_TASKS[agente]
 
-  // 5. Datos de agentes previos (solo para generador_reporte)
+  // 5. Memoria del agente (historial de ejecuciones previas)
+  const memorySection = input.memoryContext ?? ''
+
+  // 6. Datos de agentes previos (solo para generador_reporte)
   let previousData = ''
   if (agente === 'generador_reporte' && input.previousResults?.length) {
     previousData = `\n\n---\n\n## Resultados de los agentes ejecutados\nUsa estos datos reales para construir el reporte consolidado:\n\n`
@@ -366,6 +432,10 @@ ${skills}
 ---
 
 ${context}
+
+---
+
+${memorySection}
 
 ---
 

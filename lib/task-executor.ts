@@ -3,6 +3,7 @@ import { supabaseAdmin } from './supabase-admin'
 import type { TareaEjecucion, NivelAutonomia } from '@/types'
 import { getNivelAutonomia } from '@/types'
 import { completarTarea, fallarTarea, marcarEjecutando } from './tareas-ejecucion'
+import { guardarContenido } from './content-library'
 
 // ══════════════════════════════════════════════════════════════
 // TASK EXECUTOR — Motor de ejecución autónoma de tareas
@@ -166,32 +167,106 @@ async function ejecutarCambioGBP(
 }
 
 async function ejecutarPublicarPost(tarea: TareaEjecucion): Promise<{ mensaje: string }> {
-  // TODO: GBP API → accounts.locations.localPosts.create
-  return {
-    mensaje: `[Preparado] Post "${tarea.titulo}" generado y listo para publicar. Pendiente de conexión con GBP API.`,
-  }
+  // Guardar el post en la librería + intentar publicar cuando GBP API esté disponible
+  return ejecutarPublicarPostContenido(tarea)
 }
 
 async function ejecutarResponderResena(tarea: TareaEjecucion): Promise<{ mensaje: string }> {
-  // TODO: GBP API → accounts.locations.reviews.updateReply
-  const respuesta = tarea.valor_propuesto?.substring(0, 100) || 'respuesta generada'
+  const contenido = tarea.valor_propuesto || ''
+
+  await guardarContenido({
+    clienteId: tarea.cliente_id,
+    agente: tarea.agente,
+    tareaId: tarea.id,
+    tipo: 'respuesta_resena',
+    categoria: 'map_pack',
+    titulo: tarea.titulo,
+    contenido,
+    plataformaTarget: 'google_maps',
+    optimizadoPara: 'reputacion',
+  })
+
   return {
-    mensaje: `[Preparado] Respuesta a reseña lista: "${respuesta}...". Pendiente de conexión con GBP API.`,
+    mensaje: `✅ Respuesta a reseña guardada en librería. Pendiente publicar en Google (API no conectada).`,
   }
 }
 
 async function ejecutarGenerarSchema(tarea: TareaEjecucion): Promise<{ mensaje: string }> {
-  // Los schemas se generan directamente — no necesitan GBP API
-  // Se pueden inyectar en la web del cliente si hay acceso
+  // Guardar schema en la librería de contenido
+  const contenido = tarea.valor_propuesto || ''
+  let contenidoJson: Record<string, unknown> | undefined
+
+  try {
+    contenidoJson = JSON.parse(contenido)
+  } catch {
+    // No es JSON válido, guardar como texto
+  }
+
+  await guardarContenido({
+    clienteId: tarea.cliente_id,
+    agente: tarea.agente,
+    tareaId: tarea.id,
+    tipo: 'schema_jsonld',
+    categoria: 'geo_aeo',
+    titulo: tarea.titulo,
+    contenido,
+    contenidoJson,
+    plataformaTarget: 'google',
+    optimizadoPara: 'rich_snippet',
+  })
+
   return {
-    mensaje: `Schema JSON-LD generado: ${tarea.valor_propuesto?.substring(0, 100) || 'LocalBusiness + FAQ'}. Listo para inyectar en web del cliente.`,
+    mensaje: `✅ Schema JSON-LD guardado en librería de contenido. Listo para inyectar en web.`,
   }
 }
 
 async function ejecutarGenerarContenido(tarea: TareaEjecucion): Promise<{ mensaje: string }> {
-  // FAQs, chunks, TL;DR — contenido digital generado
+  const campo = tarea.campo_gbp || 'general'
+  const contenido = tarea.valor_propuesto || tarea.descripcion || ''
+
+  // Determinar tipo y categoría según el campo
+  const tipoMap: Record<string, { tipo: string; categoria: string; plataforma: string; optimizado: string }> = {
+    faq: { tipo: 'faq_voz', categoria: 'voz', plataforma: 'gemini', optimizado: 'busqueda_voz' },
+    chunks_contenido: { tipo: 'chunk', categoria: 'geo_aeo', plataforma: 'chatgpt', optimizado: 'citacion_llm' },
+    tldr_entidad: { tipo: 'tldr', categoria: 'geo_aeo', plataforma: 'gemini', optimizado: 'citacion_llm' },
+  }
+
+  const config = tipoMap[campo] ?? { tipo: campo, categoria: 'geo_aeo', plataforma: 'web', optimizado: 'general' }
+
+  await guardarContenido({
+    clienteId: tarea.cliente_id,
+    agente: tarea.agente,
+    tareaId: tarea.id,
+    tipo: config.tipo,
+    categoria: config.categoria,
+    titulo: tarea.titulo,
+    contenido,
+    plataformaTarget: config.plataforma,
+    optimizadoPara: config.optimizado,
+  })
+
   return {
-    mensaje: `Contenido GEO/AEO generado: "${tarea.titulo}". Listo para publicar en web/blog del cliente.`,
+    mensaje: `✅ Contenido guardado en librería: "${tarea.titulo}" (${config.tipo}/${config.categoria}). Listo para publicar.`,
+  }
+}
+
+async function ejecutarPublicarPostContenido(tarea: TareaEjecucion): Promise<{ mensaje: string }> {
+  const contenido = tarea.valor_propuesto || tarea.descripcion || ''
+
+  await guardarContenido({
+    clienteId: tarea.cliente_id,
+    agente: tarea.agente,
+    tareaId: tarea.id,
+    tipo: 'post_gbp',
+    categoria: 'map_pack',
+    titulo: tarea.titulo,
+    contenido,
+    plataformaTarget: 'google_maps',
+    optimizadoPara: 'map_pack',
+  })
+
+  return {
+    mensaje: `✅ Post GBP guardado en librería. Pendiente publicar en Google (API no conectada).`,
   }
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { tomarSnapshot, getSnapshots, getResumenEvolucion } from '@/lib/snapshots'
 import { getClientById } from '@/lib/clients'
 import { getProfileByClient } from '@/lib/profiles'
+import { evaluarImpacto } from '@/lib/agent-memory'
 
 // POST /api/snapshots — Tomar snapshot del día
 export async function POST(request: NextRequest) {
@@ -42,6 +43,11 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+
+  // Evaluar impacto de ejecuciones de agentes anteriores (no bloquea)
+  evaluarImpacto(clienteId).catch(e =>
+    console.error('[snapshots] Error evaluando impacto:', e)
+  )
 
   return NextResponse.json(snapshot)
 }
