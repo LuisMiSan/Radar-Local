@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { tomarSnapshot, getSnapshots, getResumenEvolucion } from '@/lib/snapshots'
 import { getClientById } from '@/lib/clients'
+import { getProfileByClient } from '@/lib/profiles'
 
 // POST /api/snapshots — Tomar snapshot del día
 export async function POST(request: NextRequest) {
@@ -22,14 +23,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'clienteId debe ser UUID válido' }, { status: 400 })
   }
 
-  // Obtener datos del cliente
+  // Obtener datos del cliente y perfil GBP
   const cliente = await getClientById(clienteId)
   if (!cliente) {
     return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
   }
 
+  const perfilGbp = await getProfileByClient(clienteId)
+
+  // Usar nombre GBP si existe (es el que aparece en Google), sino negocio
+  const nombreBusqueda = perfilGbp?.nombre_gbp ?? cliente.negocio
   const zona = cliente.direccion?.split(',').pop()?.trim() ?? ''
-  const snapshot = await tomarSnapshot(clienteId, cliente.negocio, zona, notas)
+  const snapshot = await tomarSnapshot(clienteId, nombreBusqueda, zona, notas)
 
   if (!snapshot) {
     return NextResponse.json(
