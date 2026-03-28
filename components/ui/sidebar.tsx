@@ -23,6 +23,7 @@ import {
   ListChecks,
   Shield,
   Loader2,
+  TrendingUp,
 } from 'lucide-react'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -37,6 +38,7 @@ const navItems = [
   { href: '/admin/analisis', label: 'Análisis IA', icon: Zap },
   { href: '/admin/reportes', label: 'Reportes', icon: FileText },
   { href: '/admin/gastos', label: 'Gastos API', icon: DollarSign },
+  { href: '/admin/evolucion', label: 'Evolución GBP', icon: TrendingUp },
 ]
 
 // Iconos y colores por rol
