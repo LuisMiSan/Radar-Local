@@ -181,8 +181,25 @@ No solo mencionar la ciudad. Vincular con hitos locales (POIs):
 - JSON-LD obligatorio
 - Fotos reales geoetiquetadas
 
-### ChatGPT
-- Usa índice de Bing → estar en Bing Places es OBLIGATORIO
+### ChatGPT / Copilot / Bing (ecosistema Microsoft)
+- ChatGPT usa el índice de Bing como fuente de datos → Bing Places + Bing Webmaster Tools son OBLIGATORIOS
+- **Bing Places for Business** (bingplaces.com): Perfil de negocio en ecosistema Microsoft
+  - Permite importar directamente desde Google Business Profile (verificación instantánea)
+  - Campos clave: nombre, dirección, teléfono, horarios, categorías, descripción, fotos, perfiles sociales, áreas de servicio
+  - Los datos alimentan Bing Maps, Cortana, ChatGPT, Copilot y Edge
+  - Panel de análisis con métricas de rendimiento (impresiones, clics, llamadas)
+  - Gestión multi-ubicación para cadenas/franquicias
+  - Ranking en Bing: proximidad + prominencia (rating/reseñas) + relevancia (match con búsqueda)
+- **Bing Webmaster Tools** (bing.com/webmasters): Control de indexación en Bing
+  - Verificación de sitio: meta tag HTML, archivo XML, registro CNAME o DNS automático
+  - Envío de sitemaps: XML, RSS 2.0, mRSS, Atom, texto plano
+  - **IndexNow**: Protocolo estándar para notificar cambios al instante (soportado por Bing, Yandex, Naver, Seznam). Adoptado por Amazon, Shopify, Milestone. Reduce tiempo entre publicación y visibilidad en IA.
+  - URL Inspection: examinar estado de indexación de URLs individuales
+  - Site Scan: auditoría técnica SEO automatizada
+  - Análisis de backlinks: perfil de enlaces y dominios referentes
+  - Crawl Control: ajustar frecuencia de rastreo
+  - Mobile Friendly Tool: verificar compatibilidad móvil
+  - API de envío de URLs para automatización
 - Cita páginas actualizadas en últimos 10 meses
 - Prioriza fuentes con E-E-A-T demostrable
 
@@ -238,11 +255,14 @@ No solo mencionar la ciudad. Vincular con hitos locales (POIs):
 5. Incluir consultas_voz_ejemplo que activarían esta respuesta
 
 ### Al monitorizar presencia en IAs:
-1. Verificar en Gemini, ChatGPT, Perplexity y Siri
+1. Verificar en Gemini, ChatGPT, Perplexity, Copilot y Siri
 2. Probar con consultas de voz reales en español
 3. Evaluar si el negocio aparece como recomendación directa
 4. Comparar contra competidores en mismas consultas
 5. Medir score_voz (0-100) basado en presencia, citación y posición
+6. Verificar que el negocio tiene perfil activo en Bing Places (crítico para ChatGPT/Copilot)
+7. Verificar que la web está indexada en Bing Webmaster Tools con sitemap enviado
+8. Comprobar si IndexNow está implementado (indexación instantánea en Bing)
 
 ### Al generar keywords:
 1. Tres bloques: keywords_map_pack, keywords_voz, keywords_geo
@@ -265,3 +285,25 @@ No solo mencionar la ciudad. Vincular con hitos locales (POIs):
 - ¿Las fotos son reales y geoetiquetadas?
 - ¿Hay un llms.txt configurado?
 - ¿El negocio aparece en citaciones de ChatGPT/Perplexity?
+- ¿La web está verificada en Bing Webmaster Tools con sitemap enviado?
+- ¿IndexNow está implementado para indexación instantánea?
+- ¿El perfil de Bing Places tiene todos los campos completados y verificados?
+
+## CHECKLIST DE PLATAFORMAS (para agentes)
+
+Cuando un agente evalúe la presencia digital de un negocio, debe verificar:
+
+### Plataformas CRÍTICAS (sin estas, no hay presencia en IA)
+1. **Google Business Profile** — Fuente primaria para Gemini, Google Maps, Google Assistant
+2. **Bing Places for Business** — Fuente primaria para ChatGPT, Copilot, Cortana, Edge
+3. **Web propia con Schema JSON-LD** — Fuente de datos estructurados para todas las IAs
+
+### Plataformas IMPORTANTES
+4. **Bing Webmaster Tools** — Indexación en Bing, sitemaps, IndexNow
+5. **Google Search Console** — Indexación en Google, sitemaps, rendimiento
+6. **Apple Business Connect** — Presencia en Siri y Apple Maps
+
+### Plataformas RECOMENDADAS
+7. **Yelp** — Super citación para IAs
+8. **Directorios locales** (Páginas Amarillas, QDQ, etc.) — Consistencia NAP
+9. **Reddit** — La IA lee conversaciones para identificar expertos locales

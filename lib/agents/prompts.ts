@@ -348,8 +348,16 @@ EVALÚA PARA CADA PLATAFORMA:
 1. **Gemini en Maps (VOZ)**: ¿El perfil GBP tiene suficiente calidad para ser recomendado por voz? Evalúa: rating, reseñas, completitud, fotos, horarios, descripción.
 2. **Google Assistant**: ¿Hay contenido tipo featured snippet que pueda leer como respuesta?
 3. **Siri/Apple**: ¿El negocio está en Apple Business Connect?
-4. **ChatGPT**: ¿Hay suficiente presencia web para que lo conozca?
-5. **Perplexity**: ¿Hay fuentes citables actualizadas?
+4. **ChatGPT/Copilot (Bing)**: ¿Tiene perfil en Bing Places for Business? ¿La web está indexada en Bing? ¿Tiene IndexNow implementado? ChatGPT usa el índice de Bing como fuente primaria — sin Bing Places el negocio NO existe para ChatGPT.
+5. **Perplexity**: ¿Hay fuentes citables actualizadas? ¿Schema JSON-LD implementado?
+
+VERIFICA INFRAESTRUCTURA TÉCNICA:
+- ¿Bing Places for Business configurado y verificado? (CRÍTICO para ChatGPT)
+- ¿Bing Webmaster Tools con sitemap enviado?
+- ¿IndexNow implementado? (indexación instantánea en Bing, Yandex, Naver)
+- ¿Google Search Console con sitemap?
+- ¿Schema JSON-LD LocalBusiness + FAQPage en la web?
+- ¿llms.txt en la raíz del sitio?
 
 PARA CADA PLATAFORMA genera:
 - Probabilidad de aparición (alta/media/baja/nula) con justificación basada en datos reales
