@@ -173,6 +173,36 @@
 | 2026-03-27 | Leaked password protection solo Pro | Documentar, no se puede activar |
 | 2026-03-28 | Nombres competidores son URLs de Maps | cleanCompetitorName() + cleanName() |
 | 2026-03-28 | Gmail/Outlook no soportan flexbox | Usar tables HTML en emails |
+| 2026-03-29 | NotebookLM auth expiraba repetidamente | Usar notebooklm-mcp-auth.exe con ruta completa |
+| 2026-03-29 | Policy RLS ya existente al re-ejecutar SQL | DROP POLICY IF EXISTS antes de CREATE |
+
+### Semana 4 (2026-03-29)
+
+#### 2026-03-29
+- **[STEP]** Sistema de memoria de agentes: tabla `agent_memory`, funciones loadAgentMemory/saveAgentMemory/evaluarImpacto
+- **[STEP]** Página Memoria IA (`/admin/historial`) con timeline expandible y reportes completos
+- **[STEP]** Librería de Contenido: tabla `contenido_generado`, página `/admin/contenido` con stats y filtros
+- **[STEP]** Pipeline de Voz: ejecución secuencial de 5 agentes (FAQ → Chunks → TL;DR → Schema → Monitor)
+- **[STEP]** Edición inline de contenido antes de publicar (editar, descartar, copiar, marcar publicado)
+- **[STEP]** Base de conocimiento `gemini-voice-search.md` creada y enriquecida con 8 notebooks de NotebookLM
+- **[STEP]** Conexión NotebookLM establecida (94 notebooks accesibles)
+- **[STEP]** Prompts de voz reescritos para los 5 agentes de voz con foco en lenguaje conversacional
+- **[STEP]** Perfil de Bing Places creado para IA Division Lab (visibilidad en ChatGPT/Perplexity)
+- **[DECISION]** Memoria estructurada en Supabase (no RAG/vectores) — más simple, eficiente en tokens
+  - *Razon*: Pocos datos por agente, formateo como texto plano en prompt, sin overhead de embeddings
+- **[DECISION]** Knowledge files en .md cargados en memoria y cacheados, asignados por agente
+  - *Razon*: Económico en tokens (se carga solo el archivo relevante), fácil de actualizar
+- **[COST]** Pipeline de Voz x2 ejecuciones: ~$0.44 total (5 agentes x 2)
+
+## Tareas pendientes
+
+| Prioridad | Tarea | Detalle |
+|-----------|-------|---------|
+| Alta | Publicación automática en GBP | Cuando Google apruebe cuota API, conectar el botón "Publicado en GBP" para que publique directamente posts, FAQs y fotos en el perfil |
+| Alta | Publicación automática en web | Integrar con CMS del cliente para inyectar schemas JSON-LD, FAQs y chunks directamente en su web |
+| Media | Agentes auto-ejecutan todo | Que el pipeline de voz no solo genere contenido, sino que lo publique automáticamente (GBP + web) sin intervención manual |
+| Media | NotebookLM continuo | Auth funciona — automatizar extracción periódica de notebooks para actualizar knowledge base |
+| Baja | System prompts de voz | Los system prompts de los agentes de voz son genéricos — reescribirlos específicos para búsqueda por voz |
 
 ## Resumen ejecutivo
 
@@ -184,4 +214,4 @@
 - **Sistema de autonomia**: Las tareas de bajo riesgo (posts, schemas, FAQs) se auto-ejecutan. Las de riesgo medio se ejecutan y notifican. Las criticas (nombre, direccion, resenas negativas) esperan aprobacion humana.
 - **Infraestructura**: Supabase (PostgreSQL), Vercel (produccion), GitHub (CI/CD), Resend (emails), Claude API (agentes), Google Places API (datos reales)
 
-**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Google Places API integrada con datos reales y tracking de costes. Auditorias muestran competidores reales con nombres y enlaces correctos de Google Maps. Email profesional rediseñado con compatibilidad Gmail/Outlook. Sistema de autonomia implementado. Los 11 agentes funcionan como framework (orquestacion, tareas, autonomia) pero su logica de negocio es simulada — necesitan integracion con APIs externas reales. Pendiente: conectar GBP API cuando Google apruebe cuota, hacer agentes funcionales con datos reales, resolver 9 vulnerabilidades Dependabot.
+**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Google Places API integrada con datos reales y tracking de costes. Auditorias muestran competidores reales con nombres y enlaces correctos de Google Maps. Email profesional rediseñado con compatibilidad Gmail/Outlook. Sistema de autonomia implementado. Los 11 agentes tienen memoria persistente, generan contenido real (FAQs, chunks, schemas, TL;DR) y lo guardan en la librería de contenido con edición inline. Pipeline de Voz ejecuta 5 agentes en secuencia optimizados para búsqueda por voz con base de conocimiento extraída de 8 notebooks de investigación. NotebookLM conectado (94 notebooks accesibles). Bing Places configurado para IA Division Lab. Pendiente: conectar GBP API cuando Google apruebe cuota, publicación automática en web/GBP, 4 vulnerabilidades high (requieren Next.js 16 / breaking change).
