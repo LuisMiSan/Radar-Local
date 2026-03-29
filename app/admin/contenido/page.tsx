@@ -21,6 +21,7 @@ import {
   Save,
   X,
   Trash2,
+  Download,
 } from 'lucide-react'
 
 interface Contenido {
@@ -86,6 +87,8 @@ export default function ContenidoPage() {
   const [editTitulo, setEditTitulo] = useState('')
   const [editContenido, setEditContenido] = useState('')
   const [saving, setSaving] = useState(false)
+  const [llmsTxt, setLlmsTxt] = useState<string | null>(null)
+  const [llmsLoading, setLlmsLoading] = useState(false)
 
   // Cargar clientes
   useEffect(() => {
@@ -207,6 +210,32 @@ export default function ContenidoPage() {
     loadData()
   }
 
+  // Generar llms.txt
+  async function handleGenerarLlmsTxt() {
+    if (!clienteId) return
+    setLlmsLoading(true)
+    try {
+      const res = await fetch(`/api/contenido/llms-txt?clienteId=${clienteId}`)
+      const data = await res.json()
+      setLlmsTxt(data.content ?? null)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLlmsLoading(false)
+    }
+  }
+
+  function handleDescargarLlmsTxt() {
+    if (!llmsTxt) return
+    const blob = new Blob([llmsTxt], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'llms.txt'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // Marcar como publicado
   async function handlePublicar(contenidoId: string, donde: string) {
     await fetch('/api/contenido', {
@@ -260,6 +289,20 @@ export default function ContenidoPage() {
 
         <div className="flex-1" />
 
+        {/* BOTÓN LLMS.TXT */}
+        <button
+          onClick={handleGenerarLlmsTxt}
+          disabled={llmsLoading || !clienteId}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-sm font-bold hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg shadow-emerald-200"
+        >
+          {llmsLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <FileText className="w-4 h-4" />
+          )}
+          llms.txt
+        </button>
+
         {/* BOTÓN PIPELINE DE VOZ */}
         <button
           onClick={handlePipelineVoz}
@@ -286,6 +329,46 @@ export default function ContenidoPage() {
           pipelineResult.startsWith('✅') ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
         }`}>
           {pipelineResult}
+        </div>
+      )}
+
+      {/* llms.txt result */}
+      {llmsTxt && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-emerald-200">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-emerald-600" />
+              <span className="text-sm font-bold text-emerald-800">llms.txt generado</span>
+              <span className="text-xs text-emerald-600">Copia este archivo a la raíz de la web del cliente</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { navigator.clipboard.writeText(llmsTxt); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-xs font-medium transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copiar
+              </button>
+              <button
+                onClick={handleDescargarLlmsTxt}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Descargar
+              </button>
+              <button
+                onClick={() => setLlmsTxt(null)}
+                className="flex items-center gap-1.5 px-2 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-xs font-medium transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4 max-h-96 overflow-y-auto">
+            <pre className="text-xs text-emerald-900 whitespace-pre-wrap font-mono leading-relaxed">
+              {llmsTxt}
+            </pre>
+          </div>
         </div>
       )}
 
