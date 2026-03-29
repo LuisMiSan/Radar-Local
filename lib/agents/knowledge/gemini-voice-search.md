@@ -183,11 +183,15 @@ No solo mencionar la ciudad. Vincular con hitos locales (POIs):
 
 ### ChatGPT / Copilot / Bing (ecosistema Microsoft)
 - ChatGPT usa el índice de Bing como fuente de datos → Bing Places + Bing Webmaster Tools son OBLIGATORIOS
-- **Bing Places for Business** (bingplaces.com): Perfil de negocio en ecosistema Microsoft
+- Al ser Bing la base de datos que alimenta a Microsoft Copilot, la correcta indexación y cumplimiento de directrices son fundamentales para aparecer en estas experiencias de IA
+- **Bing Places for Business** (bingplaces.com): Plataforma GRATUITA para negocios
+  - Disponible en +190 países, alcanza +140 millones de usuarios activos diarios en Bing
   - Permite importar directamente desde Google Business Profile (verificación instantánea)
+  - Permite reclamar ficha existente para aumentar visibilidad y conciencia de marca
   - Campos clave: nombre, dirección, teléfono, horarios, categorías, descripción, fotos, perfiles sociales, áreas de servicio
+  - Destacar: ofertas recientes, anuncios, productos/servicios específicos
   - Los datos alimentan Bing Maps, Cortana, ChatGPT, Copilot y Edge
-  - Panel de análisis con métricas de rendimiento (impresiones, clics, llamadas)
+  - Analíticas e informes basados en datos: rendimiento del negocio y comparación con competidores
   - Gestión multi-ubicación para cadenas/franquicias
   - Ranking en Bing: proximidad + prominencia (rating/reseñas) + relevancia (match con búsqueda)
 - **Bing Webmaster Tools** (bing.com/webmasters): Control de indexación en Bing
@@ -195,11 +199,16 @@ No solo mencionar la ciudad. Vincular con hitos locales (POIs):
   - Envío de sitemaps: XML, RSS 2.0, mRSS, Atom, texto plano
   - **IndexNow**: Protocolo estándar para notificar cambios al instante (soportado por Bing, Yandex, Naver, Seznam). Adoptado por Amazon, Shopify, Milestone. Reduce tiempo entre publicación y visibilidad en IA.
   - URL Inspection: examinar estado de indexación de URLs individuales
-  - Site Scan: auditoría técnica SEO automatizada
-  - Análisis de backlinks: perfil de enlaces y dominios referentes
+  - **Site Scan**: Auditoría bajo demanda que rastrea el sitio buscando problemas técnicos SEO/GEO comunes
+  - **Investigación de Palabras Clave**: Analizar frases de usuarios y sus volúmenes de búsqueda
+  - **Análisis de backlinks**: Perfil de enlaces, dominios de referencia y textos de anclaje (anchor texts)
+  - **Reportes SEO/GEO**: Recuentos agregados de todos los errores encontrados
   - Crawl Control: ajustar frecuencia de rastreo
   - Mobile Friendly Tool: verificar compatibilidad móvil
-  - API de envío de URLs para automatización
+  - **API de envío de URLs**: Notificación instantánea de contenido actualizado para rastreo e indexación inmediata
+  - **Plugin WordPress**: Automatiza el envío de URLs a Bing
+  - API de Webmaster: acceso programático a información del sitio
+  - Cumplir las Directrices para Webmasters de Bing es clave para ser indexado correctamente
 - Cita páginas actualizadas en últimos 10 meses
 - Prioriza fuentes con E-E-A-T demostrable
 
