@@ -126,17 +126,24 @@ export default function ClientDetail({ client, tasks, profile }: ClientDetailPro
                   <p className="text-sm text-neutral-600 mt-1 max-w-xl">{profile.descripcion}</p>
                 )}
               </div>
-              {profile.url_maps && (
-                <a
-                  href={profile.url_maps}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-accent hover:underline shrink-0"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Ver en Maps
-                </a>
-              )}
+              {(() => {
+                // Usar url_maps si es una URL real de Google, sino construir búsqueda
+                const isValidMapsUrl = profile.url_maps?.includes('google.com/maps') && !profile.url_maps.includes('fake')
+                const mapsUrl = isValidMapsUrl
+                  ? profile.url_maps!
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.nombre_gbp + ' ' + (profile.nap_direccion || ''))}`
+                return (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm text-accent hover:underline shrink-0"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Ver en Maps
+                  </a>
+                )
+              })()}
             </div>
 
             {/* Stats rápidos */}

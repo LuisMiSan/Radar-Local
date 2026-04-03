@@ -66,6 +66,17 @@ export async function runAgent(
         googlePlacesData = normalizePlaceData(mainPlace)
         googlePlacesScore = calculateGBPScore(googlePlacesData)
         console.log(`[${agente}] Google Places: ${googlePlacesData.nombre} — ${googlePlacesScore}/100`)
+
+        // Auto-actualizar url_maps del perfil si tenemos la URL real de Google
+        if (googlePlacesData.google_maps_url && perfilGbp?.id) {
+          const { supabaseAdmin: sAdmin } = await import('@/lib/supabase-admin')
+          if (sAdmin) {
+            void sAdmin.from('perfiles_gbp')
+              .update({ url_maps: googlePlacesData.google_maps_url })
+              .eq('id', perfilGbp.id)
+            console.log(`[${agente}] url_maps actualizado desde Google Places`)
+          }
+        }
       }
 
       // Para auditor_gbp, buscar competidores también
