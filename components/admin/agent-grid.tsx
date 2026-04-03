@@ -24,6 +24,10 @@ const categoryLabels: Record<string, { title: string; subtitle: string }> = {
     title: 'Reporte',
     subtitle: 'Informes consolidados',
   },
+  prospector: {
+    title: 'Prospección',
+    subtitle: 'Captación automatizada de nuevos clientes',
+  },
 }
 
 export default function AgentGrid({ selectedAgent, onSelectAgent }: AgentGridProps) {

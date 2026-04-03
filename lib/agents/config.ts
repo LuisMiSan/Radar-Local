@@ -132,6 +132,7 @@ export function getAgentsByCategory() {
     map_pack: AGENT_CONFIGS.filter((a) => a.categoria === 'map_pack'),
     geo_aeo: AGENT_CONFIGS.filter((a) => a.categoria === 'geo_aeo'),
     reporte: AGENT_CONFIGS.filter((a) => a.categoria === 'reporte'),
+    prospector: AGENT_CONFIGS.filter((a) => a.categoria === 'prospector'),
     supervisor: AGENT_CONFIGS.filter((a) => a.categoria === 'supervisor'),
   }
 }
