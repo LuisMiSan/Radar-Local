@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────
 
 import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import {
   Users,
   Phone,
@@ -19,6 +20,7 @@ import {
   MapPin,
   RefreshCw,
   Loader2,
+  ExternalLink,
 } from 'lucide-react'
 import type { Cliente, EstadoCliente } from '@/types'
 import { ESTADO_LABELS, ESTADO_COLORS, PIPELINE_ORDER } from '@/types'
@@ -233,19 +235,27 @@ export default function PipelinePage() {
                         key={client.id}
                         onMouseEnter={() => setHoveredCard(client.id)}
                         onMouseLeave={() => setHoveredCard(null)}
-                        className={`bg-white rounded-lg border border-neutral-100 shadow-sm transition-all duration-200 cursor-default ${
+                        className={`bg-white rounded-lg border border-neutral-100 shadow-sm transition-all duration-200 ${
                           isHovered ? 'shadow-md border-accent/30 scale-[1.02]' : ''
                         }`}
                       >
-                        {/* Compact view - always visible */}
-                        <div className="px-3 py-2">
-                          <h4 className="font-medium text-xs text-primary truncate">
-                            {client.negocio || client.nombre || 'Sin nombre'}
-                          </h4>
+                        {/* Clickable area → ficha del cliente */}
+                        <Link
+                          href={`/admin/clientes/${client.id}`}
+                          className="block px-3 py-2 cursor-pointer hover:bg-neutral-50/50 rounded-t-lg transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <h4 className="font-medium text-xs text-primary truncate">
+                              {client.negocio || client.nombre || 'Sin nombre'}
+                            </h4>
+                            {isHovered && (
+                              <ExternalLink className="w-3 h-3 text-accent shrink-0" />
+                            )}
+                          </div>
                           {client.nombre && client.negocio && (
                             <p className="text-[10px] text-neutral-400 truncate">{client.nombre}</p>
                           )}
-                        </div>
+                        </Link>
 
                         {/* Expanded details - only on hover */}
                         <div className={`overflow-hidden transition-all duration-200 ${
@@ -278,7 +288,7 @@ export default function PipelinePage() {
                             {/* Move buttons */}
                             <div className="flex items-center gap-1.5 pt-1.5 border-t border-neutral-100">
                               <button
-                                onClick={() => moveClient(client.id, 'prev')}
+                                onClick={(e) => { e.stopPropagation(); moveClient(client.id, 'prev') }}
                                 disabled={!canGoPrev || isUpdating}
                                 className="flex-1 flex items-center justify-center gap-0.5 py-1.5 rounded text-[10px] font-medium text-neutral-500 bg-neutral-50 hover:bg-neutral-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                               >
@@ -291,7 +301,7 @@ export default function PipelinePage() {
                               ) : null}
 
                               <button
-                                onClick={() => moveClient(client.id, 'next')}
+                                onClick={(e) => { e.stopPropagation(); moveClient(client.id, 'next') }}
                                 disabled={!canGoNext || isUpdating}
                                 className="flex-1 flex items-center justify-center gap-0.5 py-1.5 rounded text-[10px] font-medium text-white bg-accent hover:bg-accent/90 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                               >

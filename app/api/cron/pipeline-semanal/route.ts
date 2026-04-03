@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { runSupervisor } from '@/lib/agents/supervisor'
+import { procesarColaEjecucion } from '@/lib/task-executor'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60 // Vercel Hobby max
@@ -108,6 +109,20 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // ── Procesar cola de tareas aprobadas pendientes ──
+  // Captura tareas que se auto-aprobaron pero no se ejecutaron inline,
+  // o que el admin aprobó manualmente entre ejecuciones del cron.
+  let tareasEjecutadas = 0
+  try {
+    const colaResult = await procesarColaEjecucion()
+    tareasEjecutadas = colaResult.exitosas
+    if (colaResult.total > 0) {
+      console.log(`[cron] Cola procesada: ${colaResult.exitosas}/${colaResult.total} tareas ejecutadas`)
+    }
+  } catch (e) {
+    console.error('[cron] Error procesando cola de ejecución:', e)
+  }
+
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
   const exitosos = results.filter(r => r.estado !== 'error').length
 
@@ -121,10 +136,11 @@ export async function GET(request: NextRequest) {
       clientes_ok: exitosos,
       tareas_generadas: totalTareas,
       duracion_seg: parseFloat(elapsed),
+      tareas_cola_ejecutadas: tareasEjecutadas,
     },
   })
 
-  console.log(`[cron] ══════ Pipeline completado: ${exitosos}/${clientes.length} clientes, ${totalTareas} tareas, $${totalCoste.toFixed(4)}, ${elapsed}s ══════`)
+  console.log(`[cron] ══════ Pipeline completado: ${exitosos}/${clientes.length} clientes, ${totalTareas} tareas generadas, ${tareasEjecutadas} de cola ejecutadas, $${totalCoste.toFixed(4)}, ${elapsed}s ══════`)
 
   return NextResponse.json({
     ok: true,
@@ -132,6 +148,7 @@ export async function GET(request: NextRequest) {
     clientes_ok: exitosos,
     clientes_error: clientes.length - exitosos,
     tareas_generadas: totalTareas,
+    tareas_cola_ejecutadas: tareasEjecutadas,
     coste_total: Math.round(totalCoste * 1_000_000) / 1_000_000,
     duracion_seg: parseFloat(elapsed),
     resultados: results,
