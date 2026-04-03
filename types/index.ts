@@ -214,12 +214,14 @@ export const AUTONOMIA_POR_CAMPO: Record<string, NivelAutonomia> = {
   atributos: 'auto_ejecutar',           // completar atributos
   atributos_secundarios: 'auto_ejecutar',
   respuesta_resena_positiva: 'auto_ejecutar',
+  horarios: 'auto_ejecutar',            // auto (agente consensúa internamente)
+  servicios: 'auto_ejecutar',
 
   // 🟡 Notificar — se ejecuta pero avisa al admin
   respuesta_resena_neutra: 'notificar',
+  respuesta_resena_negativa: 'notificar', // auto + notifica (agente replica tono del dueño)
+  email_captacion: 'notificar',           // auto + notifica (tono cordial/profesional)
   categorias_secundarias: 'notificar',
-  horarios: 'notificar',
-  servicios: 'notificar',
   productos: 'notificar',
 
   // 🔴 Requiere aprobación — riesgo alto
@@ -227,7 +229,6 @@ export const AUTONOMIA_POR_CAMPO: Record<string, NivelAutonomia> = {
   direccion: 'aprobar',
   telefono: 'aprobar',
   categoria_principal: 'aprobar',
-  respuesta_resena_negativa: 'aprobar',
   eliminacion: 'aprobar',
   web: 'aprobar',
   verificacion: 'aprobar',
