@@ -101,6 +101,7 @@ const AGENT_KNOWLEDGE: Record<Agente, KnowledgeFile[]> = {
   tldr_entidad:      ['gemini-voice-search', 'geo-aeo-fundamentals'],
   monitor_ias:       ['gemini-voice-search', 'geo-aeo-fundamentals'],
   generador_reporte: ['map-pack-ranking', 'geo-aeo-fundamentals', 'local-seo-spain'],
+  prospector_web:    ['local-seo-spain'],
   supervisor:        [],
 }
 
@@ -379,21 +380,84 @@ Responde SOLO en JSON válido:
 }`,
 
   generador_reporte: `## Tu tarea
-Genera un reporte mensual consolidado profesional:
+Genera un reporte mensual consolidado profesional CON COMPARATIVA:
 
-1. **Secciones**: Resumen ejecutivo, Map Pack, GEO/AEO, Próximos pasos
-2. **Métricas Map Pack**: posición Maps, visitas ficha, llamadas, NAP consistencia — cada una con variación estimada
-3. **Métricas GEO/AEO**: plataformas presencia, posiciones, schemas, FAQs
-4. **Highlights**: 3 logros principales
-5. **Próximos pasos**: 3 acciones priorizadas
+1. **Secciones**: Resumen ejecutivo, Map Pack, GEO/AEO, Comparativa, Próximos pasos
+2. **Métricas Map Pack**: posición Maps, visitas ficha, llamadas, NAP consistencia — cada una con valor anterior y actual
+3. **Métricas GEO/AEO**: plataformas presencia, posiciones, schemas, FAQs — con variación
+4. **Comparativa**: Si hay informe anterior, calcula variaciones REALES (no estimadas). Si no hay informe anterior, indica "Primer informe — línea base establecida"
+5. **Highlights**: 3 logros principales del mes
+6. **Próximos pasos**: 3 acciones priorizadas
 
-NOTA: Genera métricas estimadas realistas basadas en el estado actual del perfil.
+REGLAS DE COMPARATIVA:
+- Si tienes datos del mes anterior → calcula variaciones reales: "52 → 68 (+30.7%)"
+- Si NO tienes datos del mes anterior → marca como "línea base" y NO inventes variaciones
+- Nunca inventes datos del mes anterior. Si no los tienes, di que es el primer informe.
+- El resumen ejecutivo DEBE abrir con la tendencia general: "Mes positivo: +X% visitas, +Y reseñas" o "Mes estable" o "Retroceso en X"
 
 Responde SOLO en JSON válido:
 {
   "secciones": [{"titulo": string, "contenido": string}],
-  "metricas_map_pack": {"posicion_maps": {"anterior": number, "actual": number, "variacion": string}, "visitas_ficha": {"anterior": number, "actual": number, "variacion": string}, "llamadas": {"anterior": number, "actual": number, "variacion": string}, "nap_consistencia": {"anterior": string, "actual": string, "variacion": string}},
-  "metricas_geo_aeo": {"plataformas_presencia": string, "posicion_gemini": number, "posicion_perplexity": number, "schemas_implementados": number, "faqs_indexadas": number}
+  "metricas_map_pack": {"posicion_maps": {"anterior": number|null, "actual": number, "variacion": string}, "visitas_ficha": {"anterior": number|null, "actual": number, "variacion": string}, "llamadas": {"anterior": number|null, "actual": number, "variacion": string}, "nap_consistencia": {"anterior": string|null, "actual": string, "variacion": string}},
+  "metricas_geo_aeo": {"plataformas_presencia": {"anterior": number|null, "actual": number, "variacion": string}, "schemas_implementados": {"anterior": number|null, "actual": number, "variacion": string}, "faqs_indexadas": {"anterior": number|null, "actual": number, "variacion": string}, "score_voz": {"anterior": number|null, "actual": number, "variacion": string}},
+  "comparativa": {"tiene_mes_anterior": boolean, "resumen_tendencia": string, "metricas_clave": [{"nombre": string, "anterior": number|null, "actual": number, "variacion_pct": number|null, "icono": "up"|"down"|"same"}]},
+  "mejoras_realizadas": [string],
+  "proximos_pasos": [string],
+  "puntuacion": number
+}`,
+
+  prospector_web: `## Tu tarea
+Analiza la web del negocio y genera una ficha de prospección completa.
+
+1. **Auditoría web**: Estado general, SEO, mobile, SSL, velocidad, UX, contenido
+2. **Contacto**: Extrae email, teléfono, WhatsApp, redes sociales del HTML
+3. **Diagnóstico**: Score 0-100 y veredicto (excelente/buena/mejorable/deficiente/crítica/inexistente)
+4. **Referente**: Sugiere una web del mismo nicho conocida por buen diseño (nombre + URL + por qué)
+5. **Si score < 50**: Genera el HTML COMPLETO de una página demo profesional para el negocio
+6. **Email de captación**: Redacta el email personalizado mencionando hallazgos concretos
+
+REGLAS PARA LA DEMO HTML:
+- Página completa: <!DOCTYPE html> hasta </html>
+- Responsive (mobile-first), moderna, con Tailwind CDN
+- Usa los datos REALES del negocio (nombre, dirección, teléfono, servicios)
+- Hero con CTA claro, secciones de servicios, contacto, mapa embed placeholder
+- Colores y estilo coherentes con el sector del negocio
+- Si hay logo en la web original, referencialo
+- NO incluyas placeholder lorem ipsum — usa contenido real del negocio
+
+Responde SOLO en JSON válido:
+{
+  "web_score": number,
+  "veredicto": "excelente"|"buena"|"mejorable"|"deficiente"|"critica"|"inexistente",
+  "auditoria": {
+    "ssl": boolean,
+    "mobile_friendly": boolean,
+    "velocidad": "rapida"|"normal"|"lenta"|"timeout",
+    "seo_basico": {"title": boolean, "meta_description": boolean, "h1": boolean, "schema": boolean},
+    "contenido": "completo"|"basico"|"pobre"|"inexistente",
+    "problemas": [string],
+    "puntos_fuertes": [string]
+  },
+  "contacto": {
+    "emails": [string],
+    "telefonos": [string],
+    "whatsapp": string|null,
+    "redes_sociales": [{"plataforma": string, "url": string}],
+    "contacto_principal": string|null
+  },
+  "referente": {
+    "nombre": string,
+    "url": string,
+    "razon": string
+  },
+  "necesita_demo": boolean,
+  "demo_html": string|null,
+  "email_captacion": {
+    "asunto": string,
+    "cuerpo": string,
+    "destinatario": string|null
+  },
+  "resumen_prospector": string
 }`,
 
   supervisor: `El supervisor no genera prompts directamente — orquesta los demás agentes.`,
@@ -429,6 +493,35 @@ export function buildPrompt(agente: Agente, input: AgentInput): string {
     }
   }
 
+  // 7a. Datos web scrapeados (para prospector_web)
+  let webData = ''
+  if (agente === 'prospector_web' && input.webScrapedData) {
+    const wd = input.webScrapedData
+    webData = `\n\n---\n\n## Datos reales de la web del negocio
+- **URL**: ${wd.url}
+- **Estado HTTP**: ${wd.status}
+- **SSL**: ${wd.url.startsWith('https') ? 'Sí' : 'No'}
+${wd.status >= 400 ? `- **Error**: HTTP ${wd.status}` : ''}
+
+### HTML de la web (primeros ~15k caracteres):
+\`\`\`html
+${wd.html}
+\`\`\`\n`
+  } else if (agente === 'prospector_web' && !input.webScrapedData) {
+    webData = `\n\n---\n\n## Web del negocio
+El negocio NO tiene web registrada o no se pudo acceder. Veredicto: "inexistente". Genera demo obligatoriamente.\n`
+  }
+
+  // 7. Informe anterior (para comparativa mes a mes)
+  let previousReport = ''
+  if (agente === 'generador_reporte' && input.informeAnterior) {
+    previousReport = `\n\n---\n\n## Informe del mes anterior (COMPARATIVA OBLIGATORIA)
+Usa estos datos del mes anterior para calcular variaciones REALES, no estimadas.
+Cada métrica debe mostrar: valor anterior → valor actual → variación (↑↓→).
+
+${JSON.stringify(input.informeAnterior, null, 2)}\n`
+  }
+
   // Componer el prompt del usuario
   return `## Conocimiento de referencia
 ${knowledge}
@@ -447,5 +540,5 @@ ${memorySection}
 
 ---
 
-${task}${previousData}`
+${task}${previousData}${previousReport}${webData}`
 }

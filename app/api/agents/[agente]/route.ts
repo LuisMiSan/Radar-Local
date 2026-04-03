@@ -15,14 +15,15 @@ const AGENTES_VALIDOS: Agente[] = [
   'tldr_entidad',
   'monitor_ias',
   'generador_reporte',
+  'prospector_web',
 ]
 
 // POST /api/agents/[agente] — Ejecutar un agente para un cliente
 export async function POST(
   request: NextRequest,
-  { params }: { params: { agente: string } }
+  { params }: { params: Promise<{ agente: string }> }
 ) {
-  const { agente } = params
+  const { agente } = await params
 
   // Validar que el agente es válido
   if (!AGENTES_VALIDOS.includes(agente as Agente)) {

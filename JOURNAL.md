@@ -2,13 +2,13 @@
 
 > Generado y mantenido por Sinapsis
 > Proyecto: Radar Local | Inicio: 2026-03-08
-> Ultima actualizacion: 2026-03-28
+> Ultima actualizacion: 2026-04-01
 
 ## Stack
 
 | Tecnologia | Version | Detectada por |
 |-----------|---------|---------------|
-| Next.js | 14.2 | package.json |
+| Next.js | 15.5 | package.json |
 | TypeScript | 5.x | tsconfig.json |
 | Supabase | PostgreSQL | @supabase/supabase-js |
 | Tailwind CSS | 3.x | tailwind.config.ts |
@@ -154,6 +154,8 @@
 | 2026-03-26 | Autonomia por campo_gbp (no por agente) | Mismo agente puede tener riesgo variable | Por agente, por prioridad |
 | 2026-03-26 | Ejecutores placeholder para GBP API | API bloqueada, arquitectura lista | Esperar API, mock sin arquitectura |
 | 2026-03-28 | Tables HTML para emails (no flexbox) | Gmail/Outlook no soportan flexbox | CSS moderno, MJML |
+| 2026-03-30 | NotebookLM sync manual (no cron) | No tiene API pública, solo MCP en sesión | Cron automático, webhooks |
+| 2026-04-01 | Next.js 15.5.14 (no 16) | Resuelve 4 CVEs high sin breaking change mayor | Next.js 16, quedarse en 14 |
 
 ## Gotchas encontrados
 
@@ -175,6 +177,9 @@
 | 2026-03-28 | Gmail/Outlook no soportan flexbox | Usar tables HTML en emails |
 | 2026-03-29 | NotebookLM auth expiraba repetidamente | Usar notebooklm-mcp-auth.exe con ruta completa |
 | 2026-03-29 | Policy RLS ya existente al re-ejecutar SQL | DROP POLICY IF EXISTS antes de CREATE |
+| 2026-03-31 | Regex flag `s` no disponible sin ES2018 target | Usar `[\s\S]` en vez de `.` con flag `s` |
+| 2026-04-01 | Next.js 15: params es Promise | Añadir `await params` en routes y pages |
+| 2026-04-01 | Next.js 15: cookies() es Promise | Añadir `await cookies()` en server code |
 
 ### Semana 4 (2026-03-29)
 
@@ -194,15 +199,56 @@
   - *Razon*: Económico en tokens (se carga solo el archivo relevante), fácil de actualizar
 - **[COST]** Pipeline de Voz x2 ejecuciones: ~$0.44 total (5 agentes x 2)
 
+### Semana 5 (2026-03-30 → 2026-04-01)
+
+#### 2026-03-30
+- **[STEP]** NotebookLM sync bidireccional: módulo `lib/notebooklm-sync.ts` con push/pull tracking
+- **[STEP]** Tabla `notebooklm_sync` en Supabase para registro de sincronizaciones
+- **[STEP]** API `/api/notebooklm` con endpoints GET (status/preview) y POST (record sync)
+- **[STEP]** Push de 36 contenidos de IA Division Lab a NotebookLM (registrado en Supabase)
+- **[STEP]** Botón NotebookLM en página Contenido con badge de pendientes y preview panel
+- **[DECISION]** NotebookLM sync manual desde Claude Code (no automatizable)
+  - *Razon*: NotebookLM no tiene API pública — solo funciona via MCP en sesión activa de Claude Code
+  - *Alternativas descartadas*: Cron automático (imposible sin API), webhooks (no existen)
+
+#### 2026-03-31
+- **[STEP]** Export HTML para web: `lib/export-web.ts` genera HTML completo con schemas JSON-LD + FAQs + TL;DR
+- **[STEP]** API `/api/contenido/export-web` con soporte format=raw para descarga directa
+- **[STEP]** Botón Export HTML en página Contenido con preview, copiar y descargar
+- **[STEP]** FAQs como `<details><summary>` accordion nativo, schemas como `<script type="application/ld+json">`
+- **[STEP]** Dashboard admin reescrito completo: Client Component con Recharts
+- **[STEP]** Dashboard: 5 KPIs, 4 métricas de voz, AreaChart evolución, PieChart distribución, BarChart costes API
+- **[STEP]** Dashboard: barras cobertura por plataforma IA, actividad reciente, acciones rápidas
+- **[STEP]** Dashboard: footer con estado sync NotebookLM
+- **[STEP]** API `/api/admin/dashboard` con 6 queries paralelas a Supabase
+- **[ERROR→FIX]** Regex flag `s` no disponible sin ES2018 → usar `[\s\S]` en export-web.ts
+- **[ERROR→FIX]** Tooltip Recharts: tipo formatter incompatible → usar `(v)` con `Number(v).toFixed(4)`
+
+#### 2026-04-01
+- **[STEP]** Portal del cliente mejorado: sección "Contenido optimizado para IA"
+- **[STEP]** Portal: 4 KPIs de contenido (FAQs, chunks, schemas, TL;DR) con componente ContentKpi
+- **[STEP]** Portal: card explicativa sobre optimización para asistentes de voz
+- **[STEP]** Portal: barras de cobertura por plataforma IA (Gemini, ChatGPT, Google, Siri)
+- **[STEP]** Portal: lista colapsable de contenidos generados (ContentList) con badges de tipo
+- **[STEP]** API portal actualizada para incluir contenidoStats y contenidos en respuesta
+- **[STEP]** **Upgrade Next.js 14.2.35 → 15.5.14**: 0 vulnerabilidades (antes: 4 high)
+- **[STEP]** Migración Next.js 15: `params` ahora es Promise (7 archivos actualizados)
+- **[STEP]** Migración Next.js 15: `cookies()` ahora es Promise (2 archivos)
+- **[STEP]** Migración Next.js 15: `createSupabaseServer()` ahora async (3 callers)
+- **[DECISION]** Upgrade a Next.js 15 (no 16) para resolver vulnerabilidades
+  - *Razon*: Las 4 CVEs afectan hasta next@15.5.13, por lo que 15.5.14 las resuelve sin saltar a v16
+  - *Alternativas descartadas*: Next.js 16 (breaking change mayor innecesario), quedarse en 14 (4 CVEs high)
+
 ## Tareas pendientes
 
 | Prioridad | Tarea | Detalle |
 |-----------|-------|---------|
-| Alta | Publicación automática en GBP | Cuando Google apruebe cuota API, conectar el botón "Publicado en GBP" para que publique directamente posts, FAQs y fotos en el perfil |
-| Alta | Publicación automática en web | Integrar con CMS del cliente para inyectar schemas JSON-LD, FAQs y chunks directamente en su web |
-| Media | Agentes auto-ejecutan todo | Que el pipeline de voz no solo genere contenido, sino que lo publique automáticamente (GBP + web) sin intervención manual |
-| Media | NotebookLM continuo | Auth funciona — automatizar extracción periódica de notebooks para actualizar knowledge base |
-| Baja | System prompts de voz | Los system prompts de los agentes de voz son genéricos — reescribirlos específicos para búsqueda por voz |
+| Alta | Publicación automática en GBP | Cuando Google apruebe cuota API, conectar publicación directa de posts, FAQs y fotos |
+| Alta | Publicación automática en web | Integrar con CMS del cliente para inyectar schemas, FAQs y chunks |
+| Media | Agentes auto-ejecutan todo | Pipeline de voz publique automáticamente (GBP + web) sin intervención |
+| Baja | System prompts de voz | Reescribir prompts genéricos → específicos para búsqueda por voz |
+| ~~Resuelto~~ | ~~Vulnerabilidades npm~~ | ~~4 high → 0 con upgrade Next.js 15.5.14~~ |
+| ~~Resuelto~~ | ~~NotebookLM sync~~ | ~~Funciona como rutina nocturna manual desde Claude Code~~ |
 
 ## Resumen ejecutivo
 
@@ -214,4 +260,4 @@
 - **Sistema de autonomia**: Las tareas de bajo riesgo (posts, schemas, FAQs) se auto-ejecutan. Las de riesgo medio se ejecutan y notifican. Las criticas (nombre, direccion, resenas negativas) esperan aprobacion humana.
 - **Infraestructura**: Supabase (PostgreSQL), Vercel (produccion), GitHub (CI/CD), Resend (emails), Claude API (agentes), Google Places API (datos reales)
 
-**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Google Places API integrada con datos reales y tracking de costes. Auditorias muestran competidores reales con nombres y enlaces correctos de Google Maps. Email profesional rediseñado con compatibilidad Gmail/Outlook. Sistema de autonomia implementado. Los 11 agentes tienen memoria persistente, generan contenido real (FAQs, chunks, schemas, TL;DR) y lo guardan en la librería de contenido con edición inline. Pipeline de Voz ejecuta 5 agentes en secuencia optimizados para búsqueda por voz con base de conocimiento extraída de 8 notebooks de investigación. NotebookLM conectado (94 notebooks accesibles). Bing Places configurado para IA Division Lab. Pendiente: conectar GBP API cuando Google apruebe cuota, publicación automática en web/GBP, 4 vulnerabilidades high (requieren Next.js 16 / breaking change).
+**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Next.js 15.5.14, 0 vulnerabilidades. Google Places API integrada con datos reales y tracking de costes. Email profesional con compatibilidad Gmail/Outlook. Los 11 agentes tienen memoria persistente, generan contenido real (FAQs, chunks, schemas, TL;DR) y lo guardan en la librería de contenido con edición inline y export HTML para web. Pipeline de Voz ejecuta 5 agentes en secuencia optimizados para búsqueda por voz. Dashboard admin con Recharts (KPIs, métricas de voz, gráficos evolución/costes, cobertura por plataforma). Portal del cliente muestra métricas, tareas, contenido optimizado para IA con KPIs de voz y lista de contenidos. NotebookLM sync bidireccional como rutina nocturna. Bing Places configurado para IA Division Lab. Pendiente: conectar GBP API cuando Google apruebe cuota, publicación automática en web/GBP.

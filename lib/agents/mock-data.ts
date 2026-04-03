@@ -575,6 +575,38 @@ export function generateMockResult(agente: Agente, input: AgentInput): AgentResu
       }
     },
 
+    prospector_web: () => ({
+      datos: {
+        web_score: tieneWeb ? 35 : 0,
+        veredicto: tieneWeb ? 'deficiente' : 'inexistente',
+        auditoria: {
+          ssl: tieneWeb,
+          mobile_friendly: false,
+          velocidad: 'lenta',
+          seo_basico: { title: true, meta_description: false, h1: false, schema: false },
+          contenido: tieneWeb ? 'basico' : 'inexistente',
+          problemas: ['Sin meta description', 'Sin schema markup', 'No responsive'],
+          puntos_fuertes: tieneWeb ? ['Tiene dominio propio'] : [],
+        },
+        contacto: {
+          emails: cliente.email ? [cliente.email] : [],
+          telefonos: cliente.telefono ? [cliente.telefono] : [],
+          whatsapp: null,
+          redes_sociales: [],
+          contacto_principal: cliente.email ?? cliente.telefono ?? null,
+        },
+        referente: { nombre: 'Ejemplo referente', url: 'https://ejemplo.com', razon: 'Buen diseño del sector' },
+        necesita_demo: true,
+        email_captacion: {
+          asunto: `${nombre}: Tu web puede mejorar`,
+          cuerpo: `[Mock] Email de captación para ${nombre}`,
+          destinatario: cliente.email,
+        },
+        resumen_prospector: `[Mock] Web de ${nombre}: score ${tieneWeb ? 35 : 0}/100 (${tieneWeb ? 'deficiente' : 'inexistente'}). Necesita demo.`,
+      },
+      resumen: `Prospección de ${nombre}: web ${tieneWeb ? 'deficiente (35/100)' : 'inexistente'}. Demo recomendada. Contacto: ${cliente.email ?? 'no disponible'}.`,
+    }),
+
     supervisor: () => ({
       datos: {
         completados: 11,

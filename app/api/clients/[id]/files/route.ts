@@ -26,9 +26,9 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 // ── GET: Listar archivos ──
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params
+  const { id } = await params
   if (!UUID_REGEX.test(id)) {
     return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
   }
@@ -42,9 +42,9 @@ export async function GET(
 // ── POST: Subir archivo ──
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params
+  const { id } = await params
   if (!UUID_REGEX.test(id)) {
     return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
   }
@@ -104,9 +104,9 @@ export async function POST(
 // ── DELETE: Eliminar archivo ──
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params
+  const { id } = await params
   if (!UUID_REGEX.test(id)) {
     return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
   }

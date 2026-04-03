@@ -10,7 +10,7 @@ import { getAdminProfile, createAdminProfile } from '@/lib/roles'
 // ══════════════════════════════════════════════════════════════
 
 export async function GET() {
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session?.user) {

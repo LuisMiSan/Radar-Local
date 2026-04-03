@@ -89,6 +89,11 @@ export default function ContenidoPage() {
   const [saving, setSaving] = useState(false)
   const [llmsTxt, setLlmsTxt] = useState<string | null>(null)
   const [llmsLoading, setLlmsLoading] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<{ pendingCount: number; lastPush: string | null } | null>(null)
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [syncPreview, setSyncPreview] = useState<string | null>(null)
+  const [exportHtml, setExportHtml] = useState<string | null>(null)
+  const [exportLoading, setExportLoading] = useState(false)
 
   // Cargar clientes
   useEffect(() => {
@@ -225,6 +230,32 @@ export default function ContenidoPage() {
     }
   }
 
+  // Exportar HTML para web
+  async function handleExportWeb() {
+    if (!clienteId) return
+    setExportLoading(true)
+    try {
+      const res = await fetch(`/api/contenido/export-web?clienteId=${clienteId}`)
+      const data = await res.json()
+      setExportHtml(data.content ?? null)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
+  function handleDescargarExportWeb() {
+    if (!exportHtml) return
+    const blob = new Blob([exportHtml], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'radar-local-export.html'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function handleDescargarLlmsTxt() {
     if (!llmsTxt) return
     const blob = new Blob([llmsTxt], { type: 'text/plain' })
@@ -235,6 +266,46 @@ export default function ContenidoPage() {
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  // NotebookLM Sync
+  async function loadSyncStatus() {
+    if (!clienteId) return
+    try {
+      const res = await fetch(`/api/notebooklm?clienteId=${clienteId}&action=status`)
+      const data = await res.json()
+      setSyncStatus({
+        pendingCount: data.pendingCount ?? 0,
+        lastPush: data.lastPush?.synced_at ?? null,
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  async function handleSyncPreview() {
+    if (!clienteId) return
+    setSyncLoading(true)
+    try {
+      const res = await fetch(`/api/notebooklm?clienteId=${clienteId}&action=preview`)
+      const data = await res.json()
+      if (data.preview) {
+        setSyncPreview(data.preview)
+      } else {
+        setSyncPreview(null)
+        alert(data.message || 'No hay contenido pendiente de sincronizar')
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSyncLoading(false)
+    }
+  }
+
+  // Cargar sync status cuando cambia el cliente
+  useEffect(() => {
+    if (clienteId) loadSyncStatus()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clienteId])
 
   // Marcar como publicado
   async function handlePublicar(contenidoId: string, donde: string) {
@@ -288,6 +359,39 @@ export default function ContenidoPage() {
         </div>
 
         <div className="flex-1" />
+
+        {/* BOTÓN NOTEBOOKLM SYNC */}
+        <button
+          onClick={handleSyncPreview}
+          disabled={syncLoading || !clienteId}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl text-sm font-bold hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 transition-all shadow-lg shadow-orange-200"
+        >
+          {syncLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Zap className="w-4 h-4" />
+          )}
+          NotebookLM
+          {syncStatus && syncStatus.pendingCount > 0 && (
+            <span className="bg-white/30 text-white text-xs px-1.5 py-0.5 rounded-full font-mono">
+              {syncStatus.pendingCount}
+            </span>
+          )}
+        </button>
+
+        {/* BOTÓN EXPORTAR HTML */}
+        <button
+          onClick={handleExportWeb}
+          disabled={exportLoading || !clienteId}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-sky-600 text-white rounded-xl text-sm font-bold hover:from-blue-700 hover:to-sky-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-200"
+        >
+          {exportLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Code className="w-4 h-4" />
+          )}
+          Export HTML
+        </button>
 
         {/* BOTÓN LLMS.TXT */}
         <button
@@ -367,6 +471,84 @@ export default function ContenidoPage() {
           <div className="p-4 max-h-96 overflow-y-auto">
             <pre className="text-xs text-emerald-900 whitespace-pre-wrap font-mono leading-relaxed">
               {llmsTxt}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* NotebookLM sync preview */}
+      {syncPreview && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-amber-200">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-600" />
+              <span className="text-sm font-bold text-amber-800">Contenido para NotebookLM</span>
+              <span className="text-xs text-amber-600">Ejecuta sync desde Claude Code para enviar a NotebookLM</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { navigator.clipboard.writeText(syncPreview); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs font-medium transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copiar
+              </button>
+              <button
+                onClick={() => setSyncPreview(null)}
+                className="flex items-center gap-1.5 px-2 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs font-medium transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4 max-h-96 overflow-y-auto">
+            <pre className="text-xs text-amber-900 whitespace-pre-wrap font-mono leading-relaxed">
+              {syncPreview}
+            </pre>
+          </div>
+          {syncStatus?.lastPush && (
+            <div className="px-4 py-2 bg-amber-100/50 border-t border-amber-200 text-xs text-amber-600">
+              Último sync: {new Date(syncStatus.lastPush).toLocaleString('es-ES')}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Export HTML preview */}
+      {exportHtml && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-blue-200">
+            <div className="flex items-center gap-2">
+              <Code className="w-5 h-5 text-blue-600" />
+              <span className="text-sm font-bold text-blue-800">HTML listo para web</span>
+              <span className="text-xs text-blue-600">Schemas JSON-LD + FAQs + TL;DR + Chunks citables</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { navigator.clipboard.writeText(exportHtml); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copiar
+              </button>
+              <button
+                onClick={handleDescargarExportWeb}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Descargar .html
+              </button>
+              <button
+                onClick={() => setExportHtml(null)}
+                className="flex items-center gap-1.5 px-2 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4 max-h-[500px] overflow-y-auto">
+            <pre className="text-xs text-blue-900 whitespace-pre-wrap font-mono leading-relaxed">
+              {exportHtml}
             </pre>
           </div>
         </div>

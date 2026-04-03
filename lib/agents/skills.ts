@@ -205,6 +205,16 @@ export const AGENT_SKILLS = {
 - Incluir métricas concretas con fuente de dato
 `.trim(),
 
+  prospector_web: `
+### Skill Propia: Prospección Web Automatizada
+- Auditar la web completa: SEO técnico, mobile, SSL, velocidad, UX, contenido
+- Extraer TODOS los contactos posibles: email, teléfono, WhatsApp, redes
+- Si score < 50: generar HTML completo de demo profesional responsive con Tailwind CDN
+- La demo debe usar datos REALES del negocio (nombre, servicios, contacto, dirección)
+- Redactar email de captación personalizado, cercano, con datos concretos del análisis
+- Generar tareas: demo_web (auto) y email_captacion (requiere aprobación)
+`.trim(),
+
   supervisor: '',
 }
 
@@ -224,6 +234,7 @@ const AGENT_SKILL_MAP: Record<Agente, SkillKey[]> = {
   tldr_entidad: ['optimizar_para_llms', 'formato_profesional'],
   monitor_ias: ['optimizar_para_llms', 'formato_profesional'],
   generador_reporte: ['calcular_puntuacion', 'formato_profesional'],
+  prospector_web: ['analizar_nap', 'calcular_puntuacion', 'formato_profesional'],
   supervisor: [],
 }
 

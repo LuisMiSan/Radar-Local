@@ -100,6 +100,16 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     categoria: 'reporte',
   },
 
+  // ── Prospector (Sin pack — solo admin) ──────────────────
+  {
+    id: 'prospector_web',
+    nombre: 'Prospector Web',
+    descripcion: 'Audita la web del negocio, extrae contactos, y si la web es deficiente genera una demo personalizada + email de captación.',
+    icono: 'Globe',
+    packs: ['visibilidad_local', 'autoridad_maps_ia'],
+    categoria: 'prospector',
+  },
+
   // ── Supervisor (Orquestador) ───────────────────────────
   {
     id: 'supervisor',

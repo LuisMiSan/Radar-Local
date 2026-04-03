@@ -28,6 +28,8 @@ const EXECUTION_ORDER: Agente[] = [
   // Fase 1 — Diagnóstico
   'auditor_gbp',
   'optimizador_nap',
+  // Fase 1b — Prospección (audita web + captación)
+  'prospector_web',
   // Fase 2 — Investigación
   'keywords_locales',
   // Fase 3 — Engagement
@@ -47,6 +49,7 @@ const EXECUTION_ORDER: Agente[] = [
 // Fases con nombres para el progreso
 const FASES = [
   { nombre: 'Diagnóstico', agentes: ['auditor_gbp', 'optimizador_nap'] },
+  { nombre: 'Prospección', agentes: ['prospector_web'] },
   { nombre: 'Investigación', agentes: ['keywords_locales'] },
   { nombre: 'Engagement', agentes: ['gestor_resenas', 'redactor_posts_gbp'] },
   { nombre: 'GEO/AEO', agentes: ['generador_schema', 'creador_faq_geo', 'generador_chunks', 'tldr_entidad'] },

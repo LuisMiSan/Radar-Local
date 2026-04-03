@@ -137,6 +137,13 @@ async function ejecutarAccion(tarea: TareaEjecucion): Promise<{ mensaje: string;
     case 'respuesta_resena_negativa':
       return ejecutarResponderResena(tarea)
 
+    // ── Prospector: Demo web + Email captación ──
+    case 'demo_web':
+      return ejecutarGuardarDemo(tarea)
+
+    case 'email_captacion':
+      return ejecutarEmailCaptacion(tarea)
+
     default:
       return ejecutarGenerico(tarea)
   }
@@ -335,6 +342,60 @@ export async function procesarColaEjecucion(): Promise<ResultadoEjecucionBatch> 
 
   console.log(`[task-executor] Cola: ${data.length} tareas aprobadas pendientes de ejecución`)
   return ejecutarTareasAprobadas(data as TareaEjecucion[])
+}
+
+// ── Prospector: Guardar demo web ────────────────────────────
+
+async function ejecutarGuardarDemo(tarea: TareaEjecucion): Promise<{ mensaje: string }> {
+  const demoHtml = tarea.valor_propuesto || ''
+
+  if (!demoHtml || demoHtml.length < 100) {
+    return { mensaje: 'No se generó HTML de demo suficiente.' }
+  }
+
+  const result = await guardarContenido({
+    clienteId: tarea.cliente_id,
+    agente: tarea.agente,
+    tareaId: tarea.id,
+    tipo: 'demo_web',
+    categoria: 'prospector',
+    titulo: tarea.titulo,
+    contenido: demoHtml,
+    plataformaTarget: 'web',
+    optimizadoPara: 'captacion',
+  })
+
+  const demoUrl = result?.id
+    ? `${process.env.NEXT_PUBLIC_BASE_URL || 'https://radar-local.vercel.app'}/demo/${result.id}`
+    : null
+
+  return {
+    mensaje: `✅ Demo web guardada en librería.${demoUrl ? ` URL: ${demoUrl}` : ''} Lista para enviar al prospecto.`,
+  }
+}
+
+// ── Prospector: Enviar email de captación ───────────────────
+
+async function ejecutarEmailCaptacion(tarea: TareaEjecucion): Promise<{ mensaje: string }> {
+  // El email de captación se guarda como contenido pero NO se envía automáticamente
+  // El admin revisa y decide si enviar (requiere aprobación)
+  const emailData = tarea.valor_propuesto || ''
+
+  await guardarContenido({
+    clienteId: tarea.cliente_id,
+    agente: tarea.agente,
+    tareaId: tarea.id,
+    tipo: 'email_captacion',
+    categoria: 'prospector',
+    titulo: tarea.titulo,
+    contenido: emailData,
+    plataformaTarget: 'email',
+    optimizadoPara: 'captacion',
+  })
+
+  return {
+    mensaje: `✅ Email de captación guardado. Pendiente de revisión y envío manual por el admin.`,
+  }
 }
 
 // ── Tipos ───────────────────────────────────────────────────

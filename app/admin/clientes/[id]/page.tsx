@@ -11,11 +11,12 @@ import { generatePortalToken } from '@/lib/portal'
 import GbpConnection from '@/components/admin/gbp-connection'
 
 interface PageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default async function ClienteDetailPage({ params }: PageProps) {
-  const client = await getClientById(params.id)
+  const { id } = await params
+  const client = await getClientById(id)
 
   if (!client) {
     notFound()

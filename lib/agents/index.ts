@@ -82,6 +82,50 @@ export async function runAgent(
     }
   }
 
+  // 6a. Scrapear web del negocio (para prospector_web)
+  let webScrapedData: { url: string; html: string; status: number; redirectUrl?: string } | null = null
+  if (agente === 'prospector_web' && cliente.web) {
+    try {
+      const { scrapeWebsite } = await import('@/lib/web-scraper')
+      const scraped = await scrapeWebsite(cliente.web)
+      webScrapedData = {
+        url: scraped.url,
+        html: scraped.html,
+        status: scraped.status,
+        redirectUrl: scraped.finalUrl !== scraped.url ? scraped.finalUrl : undefined,
+      }
+      console.log(`[${agente}] Web scrapeada: ${scraped.status} — ${scraped.title || 'sin título'} (${scraped.loadTimeMs}ms)`)
+    } catch (e) {
+      console.error(`[${agente}] Error scrapeando web:`, e)
+    }
+  }
+
+  // 6b. Cargar informe anterior (para comparativa en generador_reporte)
+  let informeAnterior: Record<string, unknown> | null = null
+  if (agente === 'generador_reporte') {
+    try {
+      const { supabaseAdmin: sAdmin } = await import('@/lib/supabase-admin')
+      if (sAdmin) {
+        const { data: prevReport } = await sAdmin
+          .from('informes')
+          .select('reporte, puntuacion_gbp, consistencia_nap, total_resenas, media_resenas, posicion_maps, presencia_ias, created_at')
+          .eq('cliente_id', clienteId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (prevReport?.reporte) {
+          informeAnterior = {
+            ...prevReport,
+            reporte: typeof prevReport.reporte === 'string' ? JSON.parse(prevReport.reporte) : prevReport.reporte,
+          }
+          console.log(`[${agente}] Informe anterior cargado (${prevReport.created_at})`)
+        }
+      }
+    } catch (e) {
+      console.error(`[${agente}] Error cargando informe anterior (continuando sin él):`, e)
+    }
+  }
+
   // 6. Cargar memoria del agente (historial de ejecuciones previas)
   let memoryContext: string | undefined
   try {
@@ -112,6 +156,8 @@ export async function runAgent(
     googlePlacesScore,
     competidoresData: competidoresData.length > 0 ? competidoresData : undefined,
     memoryContext,
+    informeAnterior,
+    webScrapedData,
   })
 
   // 9. Guardar memoria de esta ejecución (no bloquea)

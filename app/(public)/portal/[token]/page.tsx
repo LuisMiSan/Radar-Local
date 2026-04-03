@@ -26,6 +26,13 @@ import {
   BarChart3,
   Activity,
   Shield,
+  Mic,
+  Code,
+  BookOpen,
+  MessageSquare,
+  Globe,
+  Sparkles,
+  ChevronRight,
 } from 'lucide-react'
 
 // ── Tipos para los datos del portal ──
@@ -52,6 +59,20 @@ interface PortalData {
     contenido: Record<string, unknown> | null
     fecha: string
   }[]
+  contenidoStats?: {
+    total: number
+    porTipo: Record<string, number>
+    porEstado: Record<string, number>
+    vozTotal: number
+  }
+  contenidos?: {
+    tipo: string
+    titulo: string
+    contenido: string
+    plataforma: string | null
+    estado: string
+    fecha: string
+  }[]
 }
 
 // ── Labels para agentes en español ──
@@ -67,6 +88,7 @@ const AGENTE_LABELS: Record<string, string> = {
   tldr_entidad: 'Entidad Digital',
   monitor_ias: 'Monitor de IAs',
   generador_reporte: 'Informe Mensual',
+  prospector_web: 'Prospector Web',
 }
 
 const PACK_LABELS: Record<string, string> = {
@@ -323,6 +345,88 @@ export default function PortalPage() {
           </div>
         </section>
 
+        {/* ── Contenido generado para IA ── */}
+        {data.contenidoStats && data.contenidoStats.total > 0 && (
+          <section>
+            <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4">
+              Contenido optimizado para IA
+            </h2>
+
+            {/* Voice KPIs */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+              <ContentKpi icon={Mic} label="FAQs de voz" value={data.contenidoStats.porTipo['faq_voz'] ?? 0} color="bg-purple-500" />
+              <ContentKpi icon={FileText} label="Chunks citables" value={data.contenidoStats.porTipo['chunk'] ?? 0} color="bg-cyan-500" />
+              <ContentKpi icon={Code} label="Schemas JSON-LD" value={data.contenidoStats.porTipo['schema_jsonld'] ?? 0} color="bg-indigo-500" />
+              <ContentKpi icon={BookOpen} label="TL;DR entidad" value={data.contenidoStats.porTipo['tldr'] ?? 0} color="bg-rose-500" />
+            </div>
+
+            {/* Explainer card */}
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-100 p-5 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-purple-900 mb-1">
+                    {data.contenidoStats.vozTotal} piezas optimizadas para asistentes de voz
+                  </h3>
+                  <p className="text-xs text-purple-700 leading-relaxed">
+                    Estamos preparando tu negocio para que Gemini, ChatGPT y Siri te recomienden cuando alguien pregunte por voz.
+                    Cada pieza de contenido está diseñada para ser citada directamente por las IAs.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Platform coverage */}
+            {data.contenidos && data.contenidos.length > 0 && (() => {
+              const plats: Record<string, number> = {}
+              data.contenidos!.forEach(c => {
+                if (c.plataforma) plats[c.plataforma] = (plats[c.plataforma] ?? 0) + 1
+              })
+              const platEntries = Object.entries(plats).sort((a, b) => b[1] - a[1])
+              const platLabels: Record<string, { label: string; emoji: string }> = {
+                gemini: { label: 'Google Gemini', emoji: '🤖' },
+                chatgpt: { label: 'ChatGPT / Copilot', emoji: '💬' },
+                google: { label: 'Google Search', emoji: '🔍' },
+                siri: { label: 'Apple Siri', emoji: '🍎' },
+                web: { label: 'Web', emoji: '🌐' },
+              }
+              return platEntries.length > 0 ? (
+                <div className="bg-white rounded-xl border border-neutral-100 p-5 mb-4">
+                  <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5" />
+                    Cobertura por plataforma de IA
+                  </h3>
+                  <div className="space-y-2.5">
+                    {platEntries.map(([plat, count]) => {
+                      const max = platEntries[0][1]
+                      const pct = Math.round((count / max) * 100)
+                      const info = platLabels[plat] ?? { label: plat, emoji: '📡' }
+                      return (
+                        <div key={plat}>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-neutral-600">{info.emoji} {info.label}</span>
+                            <span className="font-bold text-neutral-800">{count} piezas</span>
+                          </div>
+                          <div className="w-full bg-neutral-100 rounded-full h-1.5">
+                            <div className="bg-gradient-to-r from-primary to-accent rounded-full h-1.5 transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : null
+            })()}
+
+            {/* Content list (collapsible) */}
+            {data.contenidos && data.contenidos.length > 0 && (
+              <ContentList items={data.contenidos} />
+            )}
+          </section>
+        )}
+
         {/* ── Informes mensuales ── */}
         <section>
           <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4">
@@ -336,6 +440,7 @@ export default function PortalPage() {
                 const puntuacion = contenido?.puntuacion as number | undefined
                 const mejoras = (contenido?.mejoras_realizadas as string[]) || []
                 const proximos = (contenido?.proximos_pasos as string[]) || []
+                const comparativa = contenido?.comparativa as { tiene_mes_anterior?: boolean; resumen_tendencia?: string; metricas_clave?: { nombre: string; anterior: number | null; actual: number; variacion_pct: number | null; icono: string }[] } | undefined
 
                 return (
                   <div key={i} className="bg-white rounded-xl border border-neutral-100 overflow-hidden">
@@ -363,6 +468,32 @@ export default function PortalPage() {
                     <div className="px-5 py-4 space-y-4">
                       {resumen && (
                         <p className="text-sm text-neutral-600 leading-relaxed">{resumen}</p>
+                      )}
+                      {comparativa?.metricas_clave && comparativa.metricas_clave.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-neutral-500 mb-2 flex items-center gap-1">
+                            <BarChart3 className="w-3 h-3" /> Comparativa vs mes anterior
+                          </p>
+                          {comparativa.resumen_tendencia && (
+                            <p className="text-xs text-neutral-500 mb-3 italic">{comparativa.resumen_tendencia}</p>
+                          )}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {comparativa.metricas_clave.map((m, j) => (
+                              <div key={j} className="bg-neutral-50 rounded-lg p-3 text-center">
+                                <p className="text-[10px] text-neutral-400 uppercase mb-1">{m.nombre}</p>
+                                <p className="text-lg font-bold text-neutral-800">{m.actual}</p>
+                                {m.anterior != null && m.variacion_pct != null ? (
+                                  <p className={`text-[11px] font-medium ${m.icono === 'up' ? 'text-green-600' : m.icono === 'down' ? 'text-red-500' : 'text-neutral-400'}`}>
+                                    {m.icono === 'up' ? '↑' : m.icono === 'down' ? '↓' : '→'} {m.variacion_pct > 0 ? '+' : ''}{m.variacion_pct}%
+                                    <span className="text-neutral-300 ml-1">({m.anterior})</span>
+                                  </p>
+                                ) : (
+                                  <p className="text-[11px] text-neutral-300">Línea base</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                       {mejoras.length > 0 && (
                         <div>
@@ -419,6 +550,91 @@ export default function PortalPage() {
           </p>
         </footer>
       </main>
+    </div>
+  )
+}
+
+// ── Sub-componentes ──
+
+function ContentKpi({ icon: Icon, label, value, color }: {
+  icon: typeof Mic
+  label: string
+  value: number
+  color: string
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-neutral-100 p-4 flex items-center gap-3">
+      <div className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center flex-shrink-0`}>
+        <Icon className="w-4 h-4 text-white" />
+      </div>
+      <div>
+        <p className="text-xl font-bold text-neutral-800">{value}</p>
+        <p className="text-[11px] text-neutral-400">{label}</p>
+      </div>
+    </div>
+  )
+}
+
+const TIPO_LABELS: Record<string, { label: string; icon: typeof Mic; color: string }> = {
+  faq_voz: { label: 'FAQ Voz', icon: Mic, color: 'text-purple-600 bg-purple-50' },
+  chunk: { label: 'Chunk', icon: FileText, color: 'text-cyan-600 bg-cyan-50' },
+  schema_jsonld: { label: 'Schema', icon: Code, color: 'text-indigo-600 bg-indigo-50' },
+  tldr: { label: 'TL;DR', icon: BookOpen, color: 'text-rose-600 bg-rose-50' },
+  post_gbp: { label: 'Post GBP', icon: MessageSquare, color: 'text-green-600 bg-green-50' },
+}
+
+function ContentList({ items }: { items: NonNullable<PortalData['contenidos']> }) {
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? items : items.slice(0, 5)
+
+  return (
+    <div className="bg-white rounded-xl border border-neutral-100 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-neutral-50 transition-colors"
+      >
+        <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+          Contenido generado ({items.length})
+        </span>
+        <ChevronRight className={`w-4 h-4 text-neutral-400 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+      </button>
+      {(expanded || items.length <= 5) && (
+        <div className="divide-y divide-neutral-50">
+          {visible.map((item, i) => {
+            const cfg = TIPO_LABELS[item.tipo] ?? { label: item.tipo, icon: FileText, color: 'text-neutral-600 bg-neutral-50' }
+            const IconComp = cfg.icon
+            return (
+              <div key={i} className="flex items-start gap-3 px-5 py-3">
+                <div className={`mt-0.5 w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${cfg.color.split(' ')[1]}`}>
+                  <IconComp className={`w-3.5 h-3.5 ${cfg.color.split(' ')[0]}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${cfg.color}`}>
+                      {cfg.label}
+                    </span>
+                    {item.plataforma && (
+                      <span className="text-[10px] text-neutral-400">{item.plataforma}</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-neutral-700 font-medium truncate">{item.titulo}</p>
+                  {item.contenido && item.tipo !== 'schema_jsonld' && (
+                    <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">{item.contenido}</p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {!expanded && items.length > 5 && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="w-full text-center text-xs text-primary font-medium py-3 border-t border-neutral-50 hover:bg-primary/5 transition-colors"
+        >
+          Ver los {items.length} contenidos →
+        </button>
+      )}
     </div>
   )
 }

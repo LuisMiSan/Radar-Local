@@ -13,6 +13,10 @@ export interface AgentInput {
   competidoresData?: { nombre: string; data: PlaceData; score: number }[]
   // Memoria del agente (historial de ejecuciones previas)
   memoryContext?: string
+  // Informe del mes anterior (para comparativa en generador_reporte)
+  informeAnterior?: Record<string, unknown> | null
+  // HTML scrapeado de la web del negocio (para prospector_web)
+  webScrapedData?: { url: string; html: string; status: number; redirectUrl?: string } | null
 }
 
 // Uso de tokens de la API
@@ -56,7 +60,7 @@ export interface AgentResult {
 export type AgentRunner = (input: AgentInput) => Promise<AgentResult>
 
 // Categorías de agentes (NO SEO genérico)
-export type AgentCategory = 'map_pack' | 'geo_aeo' | 'reporte' | 'supervisor'
+export type AgentCategory = 'map_pack' | 'geo_aeo' | 'reporte' | 'prospector' | 'supervisor'
 
 // Metadata de configuración de cada agente
 export interface AgentConfig {

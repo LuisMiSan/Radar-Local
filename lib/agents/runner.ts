@@ -171,6 +171,11 @@ function generarResumen(
       return `Monitor IA de ${nombre}: ${presencia}`
     },
     generador_reporte: () => `Reporte mensual generado para ${nombre}.`,
+    prospector_web: () => {
+      const score = (datos.web_score as number) ?? 0
+      const veredicto = (datos.veredicto as string) ?? 'desconocido'
+      return `Prospección web de ${nombre}: score ${score}/100 (${veredicto}).${(datos.necesita_demo as boolean) ? ' Demo generada.' : ''}`
+    },
     supervisor: () => `Análisis completo ejecutado para ${nombre}.`,
   }
 

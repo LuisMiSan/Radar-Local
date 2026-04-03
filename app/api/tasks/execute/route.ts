@@ -11,7 +11,7 @@ import { obtenerTareas } from '@/lib/tareas-ejecucion'
 export async function POST(request: Request) {
   try {
     // Verificar autenticación
-    const supabase = createSupabaseServer()
+    const supabase = await createSupabaseServer()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })

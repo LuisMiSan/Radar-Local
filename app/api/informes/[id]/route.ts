@@ -5,16 +5,17 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!supabaseAdmin) {
     return NextResponse.json({ error: 'Supabase no configurado' }, { status: 503 })
   }
 
+  const { id } = await params
   const { data, error } = await supabaseAdmin
     .from('informes')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error || !data) {
