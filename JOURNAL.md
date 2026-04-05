@@ -239,6 +239,31 @@
   - *Razon*: Las 4 CVEs afectan hasta next@15.5.13, por lo que 15.5.14 las resuelve sin saltar a v16
   - *Alternativas descartadas*: Next.js 16 (breaking change mayor innecesario), quedarse en 14 (4 CVEs high)
 
+### Semana 6 (2026-04-05)
+
+#### 2026-04-05
+- **[STEP]** Landing page reescrita: hero con video background, trust bar, como funciona, auditoria con dictado por voz, stats, pricing 2 planes, testimonios, FAQs accordion, CTA, footer
+- **[STEP]** Admin panel Landing Page (`/admin/landing`): 4 tabs (Hero, Planes, Testimonios, FAQs) con CRUD completo
+- **[STEP]** API `/api/landing-config`: GET/POST con upsert en tabla `configuracion` de Supabase
+- **[STEP]** Sidebar admin: entrada "Landing Page" con icono Palette
+- **[STEP]** SQL migration `supabase/migration-configuracion.sql` para tabla `configuracion` (clave/valor JSON)
+- **[STEP]** Onboarding automatizado: `lib/onboarding.ts` ejecuta 4 pasos al pasar cliente a "activo"
+  - Paso 1: Crear perfil GBP (nueva funcion `createProfile()` en profiles.ts)
+  - Paso 2: Primera ejecucion del supervisor (11 agentes)
+  - Paso 3: Generar portal con token HMAC
+  - Paso 4: Enviar email de bienvenida con link al portal
+- **[STEP]** Hook en `updateClientStatus()`: trigger asincrono de onboarding cuando estado → activo
+- **[STEP]** Pagina `/pricing` con comparativa visual detallada de los 2 packs
+  - Cards de plan con features, "no incluido", resultados estimados, CTAs
+  - Tabla comparativa por categorias (Diagnostico, Engagement, GEO/AEO, Crecimiento)
+  - Seccion "Como empezamos" (3 pasos), garantias, FAQs, CTA final
+- **[DECISION]** Onboarding asincrono (no bloquea respuesta API)
+  - *Razon*: El supervisor tarda minutos en ejecutar 11 agentes, no se puede hacer sync
+  - *Alternativas descartadas*: Sync (timeout API), queue system (overengineering para MVP)
+- **[DECISION]** Landing config dinamica via tabla `configuracion` (JSON)
+  - *Razon*: Permite editar contenido desde admin sin tocar codigo
+  - *Alternativas descartadas*: Hardcoded (no editable), CMS externo (dependencia)
+
 ## Tareas pendientes
 
 | Prioridad | Tarea | Detalle |
@@ -246,9 +271,11 @@
 | Alta | Publicación automática en GBP | Cuando Google apruebe cuota API, conectar publicación directa de posts, FAQs y fotos |
 | Alta | Publicación automática en web | Integrar con CMS del cliente para inyectar schemas, FAQs y chunks |
 | Media | Agentes auto-ejecutan todo | Pipeline de voz publique automáticamente (GBP + web) sin intervención |
+| Media | Ejecutar migration-configuracion.sql | Crear tabla `configuracion` en Supabase para config landing |
 | Baja | System prompts de voz | Reescribir prompts genéricos → específicos para búsqueda por voz |
 | ~~Resuelto~~ | ~~Vulnerabilidades npm~~ | ~~4 high → 0 con upgrade Next.js 15.5.14~~ |
 | ~~Resuelto~~ | ~~NotebookLM sync~~ | ~~Funciona como rutina nocturna manual desde Claude Code~~ |
+| ~~Resuelto~~ | ~~Onboarding manual~~ | ~~Automatizado: GBP + supervisor + portal + email al pasar a activo~~ |
 
 ## Resumen ejecutivo
 
@@ -260,4 +287,4 @@
 - **Sistema de autonomia**: Las tareas de bajo riesgo (posts, schemas, FAQs) se auto-ejecutan. Las de riesgo medio se ejecutan y notifican. Las criticas (nombre, direccion, resenas negativas) esperan aprobacion humana.
 - **Infraestructura**: Supabase (PostgreSQL), Vercel (produccion), GitHub (CI/CD), Resend (emails), Claude API (agentes), Google Places API (datos reales)
 
-**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Next.js 15.5.14, 0 vulnerabilidades. Google Places API integrada con datos reales y tracking de costes. Email profesional con compatibilidad Gmail/Outlook. Los 11 agentes tienen memoria persistente, generan contenido real (FAQs, chunks, schemas, TL;DR) y lo guardan en la librería de contenido con edición inline y export HTML para web. Pipeline de Voz ejecuta 5 agentes en secuencia optimizados para búsqueda por voz. Dashboard admin con Recharts (KPIs, métricas de voz, gráficos evolución/costes, cobertura por plataforma). Portal del cliente muestra métricas, tareas, contenido optimizado para IA con KPIs de voz y lista de contenidos. NotebookLM sync bidireccional como rutina nocturna. Bing Places configurado para IA Division Lab. Pendiente: conectar GBP API cuando Google apruebe cuota, publicación automática en web/GBP.
+**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Next.js 15.5.14, 0 vulnerabilidades. Google Places API integrada con datos reales y tracking de costes. Email profesional con compatibilidad Gmail/Outlook. Los 11 agentes tienen memoria persistente, generan contenido real (FAQs, chunks, schemas, TL;DR) y lo guardan en la librería de contenido con edición inline y export HTML para web. Pipeline de Voz ejecuta 5 agentes en secuencia optimizados para búsqueda por voz. Dashboard admin con Recharts (KPIs, métricas de voz, gráficos evolución/costes, cobertura por plataforma). Portal del cliente muestra métricas, tareas, contenido optimizado para IA con KPIs de voz y lista de contenidos. NotebookLM sync bidireccional como rutina nocturna. Bing Places configurado para IA Division Lab. Landing page profesional con hero video, pricing, testimonios y FAQs, gestionable desde admin panel. Onboarding automatizado: al pasar cliente a "activo" se crea perfil GBP, ejecuta supervisor, genera portal y envia email. Pagina /pricing con comparativa detallada de packs. Pendiente: conectar GBP API cuando Google apruebe cuota, publicación automática en web/GBP, ejecutar migration SQL de configuracion.
