@@ -60,6 +60,58 @@ const MOCK_PROFILES: PerfilGBP[] = [
   },
 ]
 
+export async function createProfile(clienteId: string, data: {
+  nombre_gbp: string
+  categoria?: string
+  descripcion?: string
+  nap_nombre?: string
+  nap_direccion?: string
+  nap_telefono?: string
+}): Promise<PerfilGBP | null> {
+  const client = supabaseAdmin ?? supabase
+  if (!client) {
+    console.log('[GBP] Mock: createProfile para', clienteId)
+    return {
+      id: 'mock-' + Date.now(),
+      cliente_id: clienteId,
+      google_business_id: null,
+      nombre_gbp: data.nombre_gbp,
+      categoria: data.categoria || null,
+      descripcion: data.descripcion || null,
+      horarios: null,
+      fotos_count: 0,
+      resenas_count: 0,
+      puntuacion: null,
+      nap_nombre: data.nap_nombre || null,
+      nap_direccion: data.nap_direccion || null,
+      nap_telefono: data.nap_telefono || null,
+      url_maps: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+  }
+
+  const { data: profile, error } = await client
+    .from('perfiles_gbp')
+    .insert({
+      cliente_id: clienteId,
+      nombre_gbp: data.nombre_gbp,
+      categoria: data.categoria || null,
+      descripcion: data.descripcion || null,
+      nap_nombre: data.nap_nombre || null,
+      nap_direccion: data.nap_direccion || null,
+      nap_telefono: data.nap_telefono || null,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('[GBP] Error creating profile:', error)
+    return null
+  }
+  return profile
+}
+
 export async function getProfileByClient(clienteId: string): Promise<PerfilGBP | null> {
   // Usamos supabaseAdmin porque perfiles_gbp tiene SELECT restringido a service_role
   const client = supabaseAdmin ?? supabase

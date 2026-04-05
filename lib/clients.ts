@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { supabaseAdmin } from './supabase-admin'
 import type { Cliente, EstadoCliente } from '@/types'
 import type { AuditResult } from './audit'
+import { runOnboarding } from './onboarding'
 
 // ---- Datos mock para desarrollo sin Supabase ----
 const MOCK_CLIENTS: Cliente[] = [
@@ -255,6 +256,14 @@ export async function updateClientStatus(
     console.error('[CRM] Error cambiando estado:', error)
     return null
   }
+
+  // Trigger onboarding automático al pasar a "activo"
+  if (newStatus === 'activo' && data) {
+    runOnboarding(data.id).catch(err =>
+      console.error('[CRM] Error en onboarding automático:', err)
+    )
+  }
+
   return data
 }
 

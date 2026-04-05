@@ -26,6 +26,7 @@ import {
   TrendingUp,
   Brain,
   BookOpen,
+  Palette,
 } from 'lucide-react'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -43,6 +44,7 @@ const navItems = [
   { href: '/admin/reportes', label: 'Reportes', icon: FileText },
   { href: '/admin/gastos', label: 'Gastos API', icon: DollarSign },
   { href: '/admin/evolucion', label: 'Evolución GBP', icon: TrendingUp },
+  { href: '/admin/landing', label: 'Landing Page', icon: Palette },
 ]
 
 // Iconos y colores por rol
