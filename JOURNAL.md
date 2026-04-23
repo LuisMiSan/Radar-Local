@@ -264,7 +264,22 @@
   - *Razon*: Permite editar contenido desde admin sin tocar codigo
   - *Alternativas descartadas*: Hardcoded (no editable), CMS externo (dependencia)
 
-### Semana 7 (2026-04-23)
+### Semana 7 (2026-04-23 → 2026-04-24)
+
+#### 2026-04-24
+- **[STEP]** Rotación completa de API keys tras breach Vercel del 19/04:
+  - Supabase: migración a nuevas keys `sb_publishable_*` + `sb_secret_*` (formato nuevo). Legacy `anon`/`service_role` deshabilitadas.
+  - Anthropic (`RADAR_ANTHROPIC_KEY`): key antigua revocada, nueva `radar-local-prod` creada.
+  - Resend (`RESEND_API_KEY`): rotada.
+  - Google OAuth (`GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`): rotados.
+  - Google Places (`GOOGLE_PLACES_API_KEY`): rotada.
+  - `PORTAL_SECRET`: regenerado localmente con 32 bytes hex.
+  - Sincronización: `.env.local` + Vercel env (production) para todas.
+- **[STEP]** Fix tipo `AgentCard` — añadidos `asyncExecution` y `pollingEndpoint` opcionales en `capabilities` (lib/a2a/types.ts) para que compile `/.well-known/agent.json`.
+- **[STEP]** Migration `migration-configuracion.sql` hecha idempotente (DROP POLICY/TRIGGER IF EXISTS antes de CREATE).
+- **[STEP]** Redeploy Vercel producción con nuevas keys — status READY.
+- **[DECISION]** Opción segura futura: editar `.env.local` directamente + `vercel env add` interactivo en terminal local. Nunca pegar keys en chat con Claude.
+- **[REQUIRES]** Re-rotación final recomendada (las keys actuales pasaron por chat durante el proceso).
 
 #### 2026-04-23
 - **[STEP]** Protocolo Agent2Agent (A2A) implementado en 4 fases completas:
@@ -298,7 +313,9 @@
 | ~~Resuelto~~ | ~~Ejecutar migration-configuracion.sql~~ | ~~Tabla `configuracion` creada en Supabase~~ |
 | Alta | Ejecutar migrations A2A en Supabase | `20260423_a2a_api_keys.sql` y `20260423_a2a_tasks.sql` |
 | Alta | Añadir A2A_INTERNAL_SECRET en Vercel | Env var requerida para el worker interno de async tasks |
-| Alta | Rotar todas las API keys (breach Vercel) | Supabase, Anthropic, Resend, Google — ver JOURNAL 2026-04-23 |
+| ~~Resuelto~~ | ~~Rotar todas las API keys (breach Vercel)~~ | ~~Hecho 2026-04-24 — Supabase, Anthropic, Resend, Google, PORTAL_SECRET~~ |
+| Media | Re-rotación privada de keys | Las actuales pasaron por chat; rotar 1 vez más sin exponer en conversación |
+| Alta | Vulnerabilidades restantes uuid/svix/resend | 3 moderate — fix requiere resend 6.1.3 (breaking change). Posponer hasta review |
 | Baja | System prompts de voz | Reescribir prompts genéricos → específicos para búsqueda por voz |
 | ~~Resuelto~~ | ~~Vulnerabilidades npm~~ | ~~4 high → 0 con upgrade Next.js 15.5.14~~ |
 | ~~Resuelto~~ | ~~NotebookLM sync~~ | ~~Funciona como rutina nocturna manual desde Claude Code~~ |
