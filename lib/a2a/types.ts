@@ -9,6 +9,8 @@ export interface AgentCard {
   capabilities: {
     streaming: boolean
     pushNotifications: boolean
+    asyncExecution?: boolean
+    pollingEndpoint?: string
   }
   skills: AgentSkill[]
 }
