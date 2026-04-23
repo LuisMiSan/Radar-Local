@@ -4,58 +4,57 @@ import { runAgent } from './index'
 import { AGENT_CONFIGS } from './config'
 
 // ══════════════════════════════════════════════════════════════
-// SUPERVISOR — Orquestador que ejecuta los 11 agentes en orden
+// SUPERVISOR — Orquestador con ejecución paralela por grupos
 // ══════════════════════════════════════════════════════════════
 //
-// Flujo:
-// 1. Recibe un cliente_id
-// 2. Determina qué agentes ejecutar según el pack del cliente
-// 3. Ejecuta cada agente en secuencia (no en paralelo, para no saturar la API)
-// 4. Cada agente recibe los resultados de los anteriores (previousResults)
-// 5. El reporte final tiene acceso a TODOS los resultados previos
-// 6. Devuelve un resumen consolidado
+// Estrategia de paralelismo (4 fases en vez de 12 llamadas secuenciales):
 //
-// Orden de ejecución (lógico, cada fase depende de la anterior):
-//   Fase 1 — Diagnóstico:     auditor_gbp, optimizador_nap
-//   Fase 2 — Investigación:   keywords_locales
-//   Fase 3 — Engagement:      gestor_resenas, redactor_posts_gbp
-//   Fase 4 — GEO/AEO:         generador_schema, creador_faq_geo, generador_chunks, tldr_entidad
-//   Fase 5 — Monitorización:  monitor_ias
-//   Fase 6 — Consolidación:   generador_reporte (usa todos los resultados anteriores)
+//  Grupo 1 ─── paralelo ──────────────────────────────────────────
+//    auditor_gbp · optimizador_nap · prospector_web
+//    gestor_resenas · tldr_entidad · monitor_ias
+//    → Sin dependencias entre sí. Solo necesitan el perfil GBP del cliente.
+//
+//  Grupo 2 ─── paralelo (espera Grupo 1) ─────────────────────────
+//    keywords_locales · generador_schema
+//    → Se enriquecen con los resultados del auditor y del perfil.
+//
+//  Grupo 3 ─── paralelo (espera Grupo 2) ─────────────────────────
+//    redactor_posts_gbp · creador_faq_geo · generador_chunks
+//    → Necesitan las keywords para optimizar el contenido.
+//
+//  Grupo 4 ─── serie (espera todos) ──────────────────────────────
+//    generador_reporte
+//    → Consume TODOS los resultados anteriores para el informe final.
+//
+// Concurrencia máxima: 3 llamadas simultáneas a la API de Claude
+// (evita saturar rate limits de Anthropic)
 
-// Orden de ejecución de los agentes
-const EXECUTION_ORDER: Agente[] = [
-  // Fase 1 — Diagnóstico
-  'auditor_gbp',
-  'optimizador_nap',
-  // Fase 1b — Prospección (audita web + captación)
-  'prospector_web',
-  // Fase 2 — Investigación
-  'keywords_locales',
-  // Fase 3 — Engagement
-  'gestor_resenas',
-  'redactor_posts_gbp',
-  // Fase 4 — GEO/AEO
-  'generador_schema',
-  'creador_faq_geo',
-  'generador_chunks',
-  'tldr_entidad',
-  // Fase 5 — Monitorización
-  'monitor_ias',
-  // Fase 6 — Consolidación
-  'generador_reporte',
+type GrupoEjecucion = {
+  nombre: string
+  agentes: Agente[]
+}
+
+const GRUPOS: GrupoEjecucion[] = [
+  {
+    nombre: 'Diagnóstico y Monitorización',
+    agentes: ['auditor_gbp', 'optimizador_nap', 'prospector_web', 'gestor_resenas', 'tldr_entidad', 'monitor_ias'],
+  },
+  {
+    nombre: 'Investigación y Schema',
+    agentes: ['keywords_locales', 'generador_schema'],
+  },
+  {
+    nombre: 'Contenido GEO/AEO',
+    agentes: ['redactor_posts_gbp', 'creador_faq_geo', 'generador_chunks'],
+  },
+  {
+    nombre: 'Consolidación',
+    agentes: ['generador_reporte'],
+  },
 ]
 
-// Fases con nombres para el progreso
-const FASES = [
-  { nombre: 'Diagnóstico', agentes: ['auditor_gbp', 'optimizador_nap'] },
-  { nombre: 'Prospección', agentes: ['prospector_web'] },
-  { nombre: 'Investigación', agentes: ['keywords_locales'] },
-  { nombre: 'Engagement', agentes: ['gestor_resenas', 'redactor_posts_gbp'] },
-  { nombre: 'GEO/AEO', agentes: ['generador_schema', 'creador_faq_geo', 'generador_chunks', 'tldr_entidad'] },
-  { nombre: 'Monitorización', agentes: ['monitor_ias'] },
-  { nombre: 'Consolidación', agentes: ['generador_reporte'] },
-] as const
+// Concurrencia máxima dentro de un grupo (respeta rate limits de Anthropic)
+const MAX_CONCURRENT = 3
 
 export interface SupervisorProgress {
   fase_actual: string
@@ -80,8 +79,108 @@ export interface SupervisorResult {
   resumen: string
 }
 
-// Callback para reportar progreso en tiempo real
 export type OnProgress = (progress: SupervisorProgress) => void
+
+// ── Pool de concurrencia ─────────────────────────────────────
+
+async function runWithConcurrency<T>(
+  items: (() => Promise<T>)[],
+  limit: number
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = []
+  const queue = [...items]
+  const running: Promise<void>[] = []
+
+  const runNext = (): Promise<void> => {
+    if (queue.length === 0) return Promise.resolve()
+    const task = queue.shift()!
+    const p = task()
+      .then((r) => { results.push({ status: 'fulfilled', value: r }) })
+      .catch((e) => { results.push({ status: 'rejected', reason: e }) })
+      .then(() => runNext())
+    running.push(p)
+    return p
+  }
+
+  // Lanzar hasta `limit` tareas en paralelo
+  const initial = Math.min(limit, items.length)
+  await Promise.all(Array.from({ length: initial }, runNext))
+
+  return results
+}
+
+// ── Ejecutar un grupo de agentes con concurrencia controlada ─
+
+async function runGrupo(
+  grupo: GrupoEjecucion,
+  agentesDisponibles: Set<Agente>,
+  clienteId: string,
+  acumulados: AgentResult[],
+  onProgress?: OnProgress,
+  completadosAntes?: number,
+  totalAgentes?: number,
+  erroresAcum?: { agente: string; error: string }[],
+  costeAcum?: number
+): Promise<{
+  resultados: AgentResult[]
+  errores: { agente: string; error: string }[]
+  costeGrupo: number
+}> {
+  const agentesGrupo = grupo.agentes.filter((a) => agentesDisponibles.has(a))
+  if (agentesGrupo.length === 0) return { resultados: [], errores: [], costeGrupo: 0 }
+
+  const resultadosGrupo: AgentResult[] = []
+  const erroresGrupo: { agente: string; error: string }[] = []
+  let costeGrupo = 0
+
+  console.log(`[supervisor] ── ${grupo.nombre} (${agentesGrupo.length} agentes en paralelo) ──`)
+
+  if (onProgress) {
+    onProgress({
+      fase_actual: grupo.nombre,
+      agente_actual: agentesGrupo.join(', '),
+      completados: completadosAntes ?? 0,
+      total: totalAgentes ?? agentesGrupo.length,
+      porcentaje: Math.round(((completadosAntes ?? 0) / (totalAgentes ?? agentesGrupo.length)) * 100),
+      resultados: acumulados,
+      errores: erroresAcum ?? [],
+      coste_total: costeAcum ?? 0,
+    })
+  }
+
+  const tareas = agentesGrupo.map((agente) => async (): Promise<AgentResult> => {
+    console.log(`[supervisor]   → ${agente} iniciado`)
+    const result = await runAgent(agente, clienteId, acumulados)
+    console.log(`[supervisor]   ✓ ${agente} completado`)
+    return result
+  })
+
+  const settled = await runWithConcurrency(tareas, MAX_CONCURRENT)
+
+  for (let i = 0; i < settled.length; i++) {
+    const agente = agentesGrupo[i]
+    const s = settled[i]
+
+    if (s.status === 'fulfilled') {
+      const result = s.value
+      resultadosGrupo.push(result)
+
+      if (result.estado === 'error') {
+        const msg = (result.datos?.error as string) ?? 'Error desconocido'
+        erroresGrupo.push({ agente, error: msg })
+        console.log(`[supervisor] ✗ ${agente} falló: ${msg}`)
+      }
+
+      costeGrupo += result.usage?.coste_total ?? 0
+    } else {
+      const msg = s.reason instanceof Error ? s.reason.message : 'Error inesperado'
+      erroresGrupo.push({ agente, error: msg })
+      console.error(`[supervisor] ✗ ${agente} excepción:`, s.reason)
+    }
+  }
+
+  return { resultados: resultadosGrupo, errores: erroresGrupo, costeGrupo }
+}
 
 // ── Ejecutar análisis completo ───────────────────────────────
 
@@ -90,110 +189,87 @@ export async function runSupervisor(
   packCliente: string | null,
   onProgress?: OnProgress
 ): Promise<SupervisorResult> {
-  // Filtrar agentes según el pack del cliente
-  const agentesDisponibles = EXECUTION_ORDER.filter((agente) => {
-    const config = AGENT_CONFIGS.find((c) => c.id === agente)
-    if (!config) return false
-    // Si el cliente no tiene pack, ejecutar todos (modo demo)
-    if (!packCliente) return true
-    return config.packs.includes(packCliente as 'visibilidad_local' | 'autoridad_maps_ia')
-  })
+  // Conjunto de agentes disponibles para este cliente/pack
+  const agentesDisponibles = new Set(
+    GRUPOS.flatMap((g) => g.agentes).filter((agente) => {
+      const config = AGENT_CONFIGS.find((c) => c.id === agente)
+      if (!config) return false
+      if (!packCliente) return true
+      return config.packs.includes(packCliente as 'visibilidad_local' | 'autoridad_maps_ia')
+    })
+  )
 
-  const resultados: AgentResult[] = []
-  const errores: { agente: string; error: string }[] = []
-  let costeTotal = 0
-  let tareasGeneradas = 0
+  const totalAgentes = agentesDisponibles.size
 
   console.log(`[supervisor] Iniciando análisis completo para cliente ${clienteId}`)
   console.log(`[supervisor] Pack: ${packCliente ?? 'sin pack (demo)'}`)
-  console.log(`[supervisor] Agentes a ejecutar: ${agentesDisponibles.length}`)
+  console.log(`[supervisor] Agentes: ${totalAgentes} en 4 grupos paralelos`)
 
-  for (let i = 0; i < agentesDisponibles.length; i++) {
-    const agente = agentesDisponibles[i]
+  let todosResultados: AgentResult[] = []
+  let todosErrores: { agente: string; error: string }[] = []
+  let costeTotal = 0
+  let tareasGeneradas = 0
+  let completados = 0
 
-    // Determinar fase actual
-    const faseActual = FASES.find((f) => (f.agentes as readonly string[]).includes(agente))
+  // Ejecutar los 4 grupos en secuencia; dentro de cada grupo, paralelismo controlado
+  for (const grupo of GRUPOS) {
+    const { resultados, errores, costeGrupo } = await runGrupo(
+      grupo,
+      agentesDisponibles,
+      clienteId,
+      todosResultados,        // resultados acumulados hasta ahora
+      onProgress,
+      completados,
+      totalAgentes,
+      todosErrores,
+      costeTotal
+    )
 
-    // Reportar progreso
-    if (onProgress) {
-      onProgress({
-        fase_actual: faseActual?.nombre ?? 'Desconocida',
-        agente_actual: agente,
-        completados: i,
-        total: agentesDisponibles.length,
-        porcentaje: Math.round((i / agentesDisponibles.length) * 100),
-        resultados,
-        errores,
-        coste_total: costeTotal,
-      })
-    }
+    todosResultados = [...todosResultados, ...resultados]
+    todosErrores = [...todosErrores, ...errores]
+    costeTotal += costeGrupo
+    completados += resultados.length
+    tareasGeneradas += resultados.reduce((sum, r) => sum + (r.tareas?.length ?? 0), 0)
 
-    console.log(`[supervisor] (${i + 1}/${agentesDisponibles.length}) Ejecutando ${agente}...`)
-
-    try {
-      const result = await runAgent(agente, clienteId, resultados)
-      resultados.push(result)
-
-      if (result.estado === 'error') {
-        const errorMsg = (result.datos?.error as string) ?? 'Error desconocido'
-        errores.push({ agente, error: errorMsg })
-        console.log(`[supervisor] ✗ ${agente} falló: ${errorMsg}`)
-      } else {
-        console.log(`[supervisor] ✓ ${agente} completado`)
-      }
-
-      // Acumular costes
-      if (result.usage) {
-        costeTotal += result.usage.coste_total
-      }
-
-      // Contar tareas generadas
-      if (result.tareas) {
-        tareasGeneradas += result.tareas.length
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Error inesperado'
-      errores.push({ agente, error: errorMsg })
-      console.error(`[supervisor] ✗ ${agente} excepción:`, error)
-      // Continuamos con el siguiente agente — no rompemos la cadena
-    }
+    console.log(
+      `[supervisor] Grupo "${grupo.nombre}" completado — ${resultados.length - errores.length}/${resultados.length} OK`
+    )
   }
 
-  // Determinar estado final
-  const completados = agentesDisponibles.length - errores.length
-  const estado = errores.length === 0
-    ? 'completada'
-    : errores.length === agentesDisponibles.length
-      ? 'error'
-      : 'parcial'
+  // Estado final
+  const estado =
+    todosErrores.length === 0
+      ? 'completada'
+      : todosErrores.length === totalAgentes
+        ? 'error'
+        : 'parcial'
 
-  const resumen = `Análisis completo: ${completados}/${agentesDisponibles.length} agentes OK, ${errores.length} errores, ${tareasGeneradas} tareas generadas. Coste: $${costeTotal.toFixed(4)}`
+  const resumen = `Análisis completo: ${completados - todosErrores.length}/${totalAgentes} agentes OK, ${todosErrores.length} errores, ${tareasGeneradas} tareas generadas. Coste: $${costeTotal.toFixed(4)}`
 
   console.log(`[supervisor] ${resumen}`)
 
-  // Reportar progreso final
   if (onProgress) {
     onProgress({
       fase_actual: 'Completado',
       agente_actual: '',
-      completados: agentesDisponibles.length,
-      total: agentesDisponibles.length,
+      completados: totalAgentes,
+      total: totalAgentes,
       porcentaje: 100,
-      resultados,
-      errores,
+      resultados: todosResultados,
+      errores: todosErrores,
       coste_total: costeTotal,
     })
   }
 
   return {
     estado,
-    completados,
-    errores: errores.length,
-    total: agentesDisponibles.length,
+    completados: completados - todosErrores.length,
+    errores: todosErrores.length,
+    total: totalAgentes,
     coste_total: costeTotal,
     tareas_generadas: tareasGeneradas,
-    resultados,
-    detalle_errores: errores,
+    resultados: todosResultados,
+    detalle_errores: todosErrores,
     resumen,
   }
 }

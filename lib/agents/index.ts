@@ -93,7 +93,20 @@ export async function runAgent(
     }
   }
 
-  // 6a. Scrapear web del negocio (para prospector_web)
+  // 6a. Datos reales de presencia en IAs externas (para monitor_ias) — vía A2A o API directa
+  let datosMonitorExterno: import('@/lib/a2a/external-monitor').DatosMonitorExterno | null = null
+  if (agente === 'monitor_ias' && cliente.negocio) {
+    try {
+      const { fetchDatosMonitorExterno } = await import('@/lib/a2a/external-monitor')
+      const localidad = cliente.direccion?.split(',').pop()?.trim() ?? ''
+      datosMonitorExterno = await fetchDatosMonitorExterno(cliente.negocio, localidad)
+      console.log(`[${agente}] Monitor externo: ${datosMonitorExterno.menciones.filter(m => m.fuente !== 'inferencia').length} fuentes reales`)
+    } catch (e) {
+      console.error(`[${agente}] Error monitor externo (continuando sin datos reales):`, e)
+    }
+  }
+
+  // 6b. Scrapear web del negocio (para prospector_web)
   let webScrapedData: { url: string; html: string; status: number; redirectUrl?: string } | null = null
   if (agente === 'prospector_web' && cliente.web) {
     try {
@@ -169,6 +182,7 @@ export async function runAgent(
     memoryContext,
     informeAnterior,
     webScrapedData,
+    datosMonitorExterno,
   })
 
   // 9. Guardar memoria de esta ejecución (no bloquea)

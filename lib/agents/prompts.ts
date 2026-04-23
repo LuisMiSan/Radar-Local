@@ -522,6 +522,34 @@ Cada métrica debe mostrar: valor anterior → valor actual → variación (↑�
 ${JSON.stringify(input.informeAnterior, null, 2)}\n`
   }
 
+  // 8. Datos reales de presencia en IAs externas (para monitor_ias) — vía A2A o API directa
+  let monitorExternoData = ''
+  if (agente === 'monitor_ias' && input.datosMonitorExterno) {
+    const dm = input.datosMonitorExterno
+    const fuentesReales = dm.menciones.filter((m) => m.fuente !== 'inferencia')
+
+    if (fuentesReales.length > 0) {
+      monitorExternoData = `\n\n---\n\n## Datos REALES de presencia en IAs (verificados externamente)
+IMPORTANTE: Estos datos son verificados con APIs reales, NO inferidos. Úsalos como base factual.
+
+${dm.menciones.map((m) => {
+  const icono = m.fuente === 'inferencia' ? '⚠️ inferencia' : '✅ verificado'
+  const mencion = m.mencionado ? '✅ Sí aparece' : '❌ No aparece'
+  return `### ${m.plataforma} — ${mencion} [${icono}]
+${m.url_encontrada ? `- URL encontrada: ${m.url_encontrada}` : ''}
+${m.posicion ? `- Posición: #${m.posicion}` : ''}
+${m.snippet ? `- Snippet: "${m.snippet}"` : ''}`
+}).join('\n\n')}
+
+Fecha verificación: ${dm.timestamp}
+`
+    } else {
+      monitorExternoData = `\n\n---\n\n## Datos de presencia en IAs externas
+Sin APIs de verificación configuradas (PERPLEXITY_API_KEY, BRAVE_SEARCH_API_KEY, BING_SEARCH_API_KEY).
+Usa tu criterio e inferencia basada en los datos del GBP para estimar la presencia.\n`
+    }
+  }
+
   // Componer el prompt del usuario
   return `## Conocimiento de referencia
 ${knowledge}
@@ -540,5 +568,5 @@ ${memorySection}
 
 ---
 
-${task}${previousData}${previousReport}${webData}`
+${task}${previousData}${previousReport}${webData}${monitorExternoData}`
 }

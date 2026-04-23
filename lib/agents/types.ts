@@ -17,6 +17,8 @@ export interface AgentInput {
   informeAnterior?: Record<string, unknown> | null
   // HTML scrapeado de la web del negocio (para prospector_web)
   webScrapedData?: { url: string; html: string; status: number; redirectUrl?: string } | null
+  // Datos reales de presencia en IAs externas (para monitor_ias) — vía A2A o API directa
+  datosMonitorExterno?: import('@/lib/a2a/external-monitor').DatosMonitorExterno | null
 }
 
 // Uso de tokens de la API
