@@ -264,6 +264,30 @@
   - *Razon*: Permite editar contenido desde admin sin tocar codigo
   - *Alternativas descartadas*: Hardcoded (no editable), CMS externo (dependencia)
 
+### Semana 7 (2026-04-23)
+
+#### 2026-04-23
+- **[STEP]** Protocolo Agent2Agent (A2A) implementado en 4 fases completas:
+  - **Fase 1** — AgentCard pública (`/.well-known/agent.json`) + endpoints A2A: POST `/api/a2a/tasks` (supervisor) y `/api/a2a/agents/[agentId]/tasks` (agente individual)
+  - **Fase 2** — Monitor externo con datos reales: `lib/a2a/external-monitor.ts` verifica presencia en Perplexity, Brave Search y Bing en paralelo, con fallback a inferencia. Cliente A2A (`lib/a2a/client.ts`) con registry de agentes externos y override por env vars.
+  - **Fase 3** — Supervisor reescrito con ejecución paralela: 4 grupos paralelos (antes 12 llamadas serie). Concurrencia máxima de 3 llamadas simultáneas para respetar rate limits.
+    - Grupo 1 (paralelo): auditor_gbp, optimizador_nap, prospector_web, gestor_resenas, tldr_entidad, monitor_ias
+    - Grupo 2 (paralelo): keywords_locales, generador_schema
+    - Grupo 3 (paralelo): redactor_posts_gbp, creador_faq_geo, generador_chunks
+    - Grupo 4 (serie): generador_reporte
+  - **Fase 4** — White label API con autenticación: API keys formato `rl_*`, rate limiting en memoria, endpoint admin `/api/admin/a2a-keys` (CRUD), acepta clienteId existente o datos crudos (crea cliente temporal)
+- **[STEP]** Async tasks para fix timeout Vercel: POST devuelve 202 inmediatamente + worker interno en `/api/a2a/tasks/[taskId]/run` con maxDuration=300. Polling de estado via `/api/a2a/tasks/[taskId]`
+- **[STEP]** Migraciones SQL: `a2a_api_keys` y `a2a_tasks` con RLS
+- **[STEP]** npm audit fix: vulnerabilidades reducidas (3 moderate restantes requieren breaking change en resend — no aplicables sin --force)
+- **[DECISION]** Supervisor paralelo con concurrencia máxima 3 (no ilimitada)
+  - *Razon*: Anthropic rate limits — demasiadas llamadas simultáneas generan 429. 3 es el sweet spot entre velocidad y estabilidad.
+  - *Alternativas descartadas*: Todo paralelo (rate limit errors), todo serie (lento, ~8 min)
+- **[DECISION]** Async tasks con worker interno (no queue externa como BullMQ)
+  - *Razon*: Vercel tiene timeout de 60s en funciones serverless. El worker usa maxDuration=300. Sin infraestructura adicional.
+  - *Alternativas descartadas*: Queue externa (dependencia), Vercel Cron (solo triggered, no on-demand)
+- **[REQUIRES]** Nueva env var `A2A_INTERNAL_SECRET` en Vercel y `.env.local`
+- **[REQUIRES]** Ejecutar migrations SQL en Supabase: `20260423_a2a_api_keys.sql` y `20260423_a2a_tasks.sql`
+
 ## Tareas pendientes
 
 | Prioridad | Tarea | Detalle |
@@ -271,7 +295,10 @@
 | Alta | Publicación automática en GBP | Cuando Google apruebe cuota API, conectar publicación directa de posts, FAQs y fotos |
 | Alta | Publicación automática en web | Integrar con CMS del cliente para inyectar schemas, FAQs y chunks |
 | Media | Agentes auto-ejecutan todo | Pipeline de voz publique automáticamente (GBP + web) sin intervención |
-| Media | Ejecutar migration-configuracion.sql | Crear tabla `configuracion` en Supabase para config landing |
+| ~~Resuelto~~ | ~~Ejecutar migration-configuracion.sql~~ | ~~Tabla `configuracion` creada en Supabase~~ |
+| Alta | Ejecutar migrations A2A en Supabase | `20260423_a2a_api_keys.sql` y `20260423_a2a_tasks.sql` |
+| Alta | Añadir A2A_INTERNAL_SECRET en Vercel | Env var requerida para el worker interno de async tasks |
+| Alta | Rotar todas las API keys (breach Vercel) | Supabase, Anthropic, Resend, Google — ver JOURNAL 2026-04-23 |
 | Baja | System prompts de voz | Reescribir prompts genéricos → específicos para búsqueda por voz |
 | ~~Resuelto~~ | ~~Vulnerabilidades npm~~ | ~~4 high → 0 con upgrade Next.js 15.5.14~~ |
 | ~~Resuelto~~ | ~~NotebookLM sync~~ | ~~Funciona como rutina nocturna manual desde Claude Code~~ |
@@ -287,4 +314,4 @@
 - **Sistema de autonomia**: Las tareas de bajo riesgo (posts, schemas, FAQs) se auto-ejecutan. Las de riesgo medio se ejecutan y notifican. Las criticas (nombre, direccion, resenas negativas) esperan aprobacion humana.
 - **Infraestructura**: Supabase (PostgreSQL), Vercel (produccion), GitHub (CI/CD), Resend (emails), Claude API (agentes), Google Places API (datos reales)
 
-**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Next.js 15.5.14, 0 vulnerabilidades. Google Places API integrada con datos reales y tracking de costes. Email profesional con compatibilidad Gmail/Outlook. Los 11 agentes tienen memoria persistente, generan contenido real (FAQs, chunks, schemas, TL;DR) y lo guardan en la librería de contenido con edición inline y export HTML para web. Pipeline de Voz ejecuta 5 agentes en secuencia optimizados para búsqueda por voz. Dashboard admin con Recharts (KPIs, métricas de voz, gráficos evolución/costes, cobertura por plataforma). Portal del cliente muestra métricas, tareas, contenido optimizado para IA con KPIs de voz y lista de contenidos. NotebookLM sync bidireccional como rutina nocturna. Bing Places configurado para IA Division Lab. Landing page profesional con hero video, pricing, testimonios y FAQs, gestionable desde admin panel. Onboarding automatizado: al pasar cliente a "activo" se crea perfil GBP, ejecuta supervisor, genera portal y envia email. Pagina /pricing con comparativa detallada de packs. Pendiente: conectar GBP API cuando Google apruebe cuota, publicación automática en web/GBP, ejecutar migration SQL de configuracion.
+**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Next.js 15.5.14. Protocolo A2A completo: AgentCard pública, endpoints para agentes externos, supervisor paralelo (4 grupos, concurrencia 3), white label API con auth `rl_*`, async tasks con polling para evitar timeouts de Vercel. Monitor externo verifica presencia real en Perplexity/Brave/Bing. Onboarding automatizado al pasar a "activo". Landing con admin panel. Pagina /pricing. ⚠️ Pendiente crítico: rotar API keys (breach Vercel 19/04), ejecutar migrations SQL A2A en Supabase, añadir A2A_INTERNAL_SECRET en Vercel.
