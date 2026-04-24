@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { scanAllSources } from '@/lib/vigilante/scanner'
 import { analyzeResults } from '@/lib/vigilante/analyzer'
-import { sendVigilanteEmail, sendWhatsApp } from '@/lib/vigilante/notifier'
+import { sendVigilanteEmail, sendTelegram } from '@/lib/vigilante/notifier'
 
 export const maxDuration = 300
 
@@ -88,7 +88,7 @@ async function runVigilante() {
     if (nuevos.length > 0) {
       await Promise.allSettled([
         sendVigilanteEmail(nuevos, fecha),
-        sendWhatsApp(nuevos),
+        sendTelegram(nuevos),
       ])
     }
 

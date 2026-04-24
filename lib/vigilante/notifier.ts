@@ -1,4 +1,4 @@
-// Notifier: email Resend + WhatsApp CallMeBot para alertas críticas del Vigilante
+// Notifier: email Resend + Telegram Bot para alertas críticas del Vigilante
 
 import { Resend } from 'resend'
 import type { CambioAnalizado } from './analyzer'
@@ -93,15 +93,19 @@ export async function sendVigilanteEmail(
   }
 }
 
-// ── WhatsApp CallMeBot ────────────────────────────────────────
+// ── Telegram Bot ─────────────────────────────────────────────
 // Solo se envía si hay cambios críticos o importantes
+// Setup: 1) Habla con @BotFather → /newbot → copia el token
+//        2) Envíate un msg al bot y visita:
+//           https://api.telegram.org/bot{TOKEN}/getUpdates → copia chat.id
+//        3) Añade TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en Vercel env vars
 
-export async function sendWhatsApp(cambios: CambioAnalizado[]): Promise<void> {
-  const apiKey = process.env.CALLMEBOT_API_KEY
-  const phone = process.env.CALLMEBOT_PHONE // formato: 34XXXXXXXXX
+export async function sendTelegram(cambios: CambioAnalizado[]): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  const chatId = process.env.TELEGRAM_CHAT_ID
 
-  if (!apiKey || !phone) {
-    console.warn('[vigilante] CallMeBot no configurado (CALLMEBOT_API_KEY + CALLMEBOT_PHONE)')
+  if (!token || !chatId) {
+    console.warn('[vigilante] Telegram no configurado (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID)')
     return
   }
 
@@ -112,21 +116,25 @@ export async function sendWhatsApp(cambios: CambioAnalizado[]): Promise<void> {
 
   const lineas = [
     `🛡️ *Radar Vigilante*`,
-    criticos.length ? `🔴 ${criticos.length} crítico(s): ${criticos.map((c) => c.titulo).join(', ')}` : '',
-    importantes.length ? `🟡 ${importantes.length} importante(s): ${importantes.map((c) => c.titulo).join(', ')}` : '',
-    `→ radar-local.vercel.app/admin/vigilante`,
+    criticos.length
+      ? `🔴 *${criticos.length} crítico(s):*\n${criticos.map((c) => `  • ${c.titulo}`).join('\n')}`
+      : '',
+    importantes.length
+      ? `🟡 *${importantes.length} importante(s):*\n${importantes.map((c) => `  • ${c.titulo}`).join('\n')}`
+      : '',
+    `[Revisar cambios →](https://radar-local.vercel.app/admin/vigilante)`,
   ]
     .filter(Boolean)
-    .join('\n')
-
-  const message = encodeURIComponent(lineas)
+    .join('\n\n')
 
   try {
-    await fetch(
-      `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${message}&apikey=${apiKey}`,
-      { signal: AbortSignal.timeout(8_000) }
-    )
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: lineas, parse_mode: 'Markdown' }),
+      signal: AbortSignal.timeout(8_000),
+    })
   } catch (err) {
-    console.error('[vigilante] Error enviando WhatsApp:', err)
+    console.error('[vigilante] Error enviando Telegram:', err)
   }
 }

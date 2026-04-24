@@ -8,7 +8,7 @@ export default async function AgentesPage() {
   return (
     <>
       <Header title="Agentes IA" />
-      <main className="p-6">
+      <main className="p-6 h-[calc(100vh-65px)]">
         <AgentesPanel clients={clients} />
       </main>
     </>
