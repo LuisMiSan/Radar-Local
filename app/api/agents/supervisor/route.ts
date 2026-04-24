@@ -8,7 +8,8 @@ import { getClientById } from '@/lib/clients'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { cliente_id } = body
+    // Acepta tanto clienteId (panel de agentes) como cliente_id (legacy)
+    const cliente_id = body.clienteId ?? body.cliente_id
 
     if (!cliente_id) {
       return NextResponse.json(
