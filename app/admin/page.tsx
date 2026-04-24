@@ -19,6 +19,8 @@ import {
   Loader2,
   BarChart3,
   Globe,
+  Eye,
+  AlertTriangle,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -34,6 +36,11 @@ import {
   Pie,
   Cell,
 } from 'recharts'
+
+interface VigilanteStats {
+  pendientes: number
+  criticos: number
+}
 
 interface DashboardData {
   clientes: {
@@ -86,6 +93,7 @@ const TIPO_LABELS: Record<string, string> = {
 
 export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
+  const [vigilante, setVigilante] = useState<VigilanteStats>({ pendientes: 0, criticos: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -94,6 +102,17 @@ export default function AdminDashboard() {
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false))
+
+    fetch('/api/vigilante/cambios?estado=pending&limit=50')
+      .then(r => r.json())
+      .then((d) => {
+        const cambios = Array.isArray(d) ? d : (d.cambios ?? [])
+        setVigilante({
+          pendientes: cambios.length,
+          criticos: cambios.filter((c: { impacto_estimado: string }) => c.impacto_estimado === 'critico').length,
+        })
+      })
+      .catch(() => {})
   }, [])
 
   if (loading) {
@@ -161,6 +180,33 @@ export default function AdminDashboard() {
         <VoiceMetric icon={Code} label="Schemas JSON-LD" value={data.contenido.porTipo['schema_jsonld'] ?? 0} color="bg-indigo-500" />
         <VoiceMetric icon={BookOpen} label="TL;DR entidad" value={data.contenido.porTipo['tldr'] ?? 0} color="bg-rose-500" />
       </div>
+
+      {/* Vigilante banner — solo si hay pendientes */}
+      {vigilante.pendientes > 0 && (
+        <a href="/admin/vigilante" className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all hover:shadow-sm ${
+          vigilante.criticos > 0
+            ? 'bg-red-50 border-red-200 hover:border-red-300'
+            : 'bg-amber-50 border-amber-200 hover:border-amber-300'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl ${vigilante.criticos > 0 ? 'bg-red-100' : 'bg-amber-100'}`}>
+              <AlertTriangle className={`w-4 h-4 ${vigilante.criticos > 0 ? 'text-red-600' : 'text-amber-600'}`} />
+            </div>
+            <div>
+              <p className={`text-sm font-semibold ${vigilante.criticos > 0 ? 'text-red-800' : 'text-amber-800'}`}>
+                {vigilante.criticos > 0
+                  ? `🔴 ${vigilante.criticos} cambio${vigilante.criticos > 1 ? 's' : ''} crítico${vigilante.criticos > 1 ? 's' : ''} sin revisar`
+                  : `🟡 ${vigilante.pendientes} cambio${vigilante.pendientes > 1 ? 's' : ''} pendiente${vigilante.pendientes > 1 ? 's' : ''} de revisión`
+                }
+              </p>
+              <p className={`text-xs mt-0.5 ${vigilante.criticos > 0 ? 'text-red-600' : 'text-amber-600'}`}>
+                Agente Vigilante — revisar y aprobar propuestas
+              </p>
+            </div>
+          </div>
+          <ArrowRight className={`w-4 h-4 shrink-0 ${vigilante.criticos > 0 ? 'text-red-400' : 'text-amber-400'}`} />
+        </a>
+      )}
 
       {/* Row 3: Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -335,8 +381,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* Row 5: Quick actions */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <QuickAction href="/admin/agentes" icon={Zap} label="Ejecutar agentes" sub="11 agentes" color="bg-accent/10 text-accent" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <QuickAction href="/admin/agentes" icon={Zap} label="Ejecutar agentes" sub="13 agentes" color="bg-accent/10 text-accent" />
+        <QuickAction href="/admin/vigilante" icon={Eye} label="Vigilante" sub={vigilante.pendientes > 0 ? `${vigilante.pendientes} pendientes` : 'Sin alertas'} color="bg-neutral-100 text-neutral-700" />
         <QuickAction href="/admin/contenido" icon={BookOpen} label="Librería contenido" sub="FAQs, schemas, chunks" color="bg-blue-50 text-blue-600" />
         <QuickAction href="/admin/evolucion" icon={TrendingUp} label="Evolución GBP" sub="Snapshots" color="bg-green-50 text-green-600" />
         <QuickAction href="/admin/gastos" icon={DollarSign} label="Control gastos" sub={`$${data.costes.total.toFixed(2)} mes`} color="bg-amber-50 text-amber-600" />
