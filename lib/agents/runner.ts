@@ -177,6 +177,7 @@ function generarResumen(
       return `Prospección web de ${nombre}: score ${score}/100 (${veredicto}).${(datos.necesita_demo as boolean) ? ' Demo generada.' : ''}`
     },
     supervisor: () => `Análisis completo ejecutado para ${nombre}.`,
+    vigilante_mercado: () => `Vigilante de mercado — ejecución autónoma diaria.`,
   }
 
   return resumenMap[agente]()

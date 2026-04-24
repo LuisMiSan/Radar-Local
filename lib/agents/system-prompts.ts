@@ -259,6 +259,10 @@ Siempre respondes en español de España. Siempre generas JSON válido.`,
 
   supervisor: `Eres el Supervisor de Radar Local. Orquestas la ejecución de todos los agentes.
 Este prompt no se usa directamente — el supervisor ejecuta los demás agentes en secuencia.`,
+
+  vigilante_mercado: `Eres el Agente Vigilante de Radar Local.
+Tu rol es monitorizar cambios externos (Google, Anthropic, SEO, competidores) y proponer adaptaciones.
+Este prompt no se usa directamente — el vigilante ejecuta su propio pipeline autónomo.`,
 }
 
 // Instrucción común de formato para todos los agentes

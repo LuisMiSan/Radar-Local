@@ -311,11 +311,11 @@
 | Alta | Publicación automática en web | Integrar con CMS del cliente para inyectar schemas, FAQs y chunks |
 | Media | Agentes auto-ejecutan todo | Pipeline de voz publique automáticamente (GBP + web) sin intervención |
 | ~~Resuelto~~ | ~~Ejecutar migration-configuracion.sql~~ | ~~Tabla `configuracion` creada en Supabase~~ |
-| Alta | Ejecutar migrations A2A en Supabase | `20260423_a2a_api_keys.sql` y `20260423_a2a_tasks.sql` |
-| Alta | Añadir A2A_INTERNAL_SECRET en Vercel | Env var requerida para el worker interno de async tasks |
+| ~~Resuelto~~ | ~~Ejecutar migrations A2A en Supabase~~ | ~~`a2a_api_keys` y `a2a_tasks` creadas en Supabase — 2026-04-24~~ |
+| ~~Resuelto~~ | ~~Añadir A2A_INTERNAL_SECRET en Vercel~~ | ~~Añadida via CLI a production — 2026-04-24~~ |
 | ~~Resuelto~~ | ~~Rotar todas las API keys (breach Vercel)~~ | ~~Hecho 2026-04-24 — Supabase, Anthropic, Resend, Google, PORTAL_SECRET~~ |
 | Media | Re-rotación privada de keys | Las actuales pasaron por chat; rotar 1 vez más sin exponer en conversación |
-| Alta | Vulnerabilidades restantes uuid/svix/resend | 3 moderate — fix requiere resend 6.1.3 (breaking change). Posponer hasta review |
+| ~~Resuelto~~ | ~~Vulnerabilidades uuid/svix/resend~~ | ~~Override uuid@14.0.0 en package.json. 0 vulnerabilidades. 2026-04-24~~ |
 | Baja | System prompts de voz | Reescribir prompts genéricos → específicos para búsqueda por voz |
 | ~~Resuelto~~ | ~~Vulnerabilidades npm~~ | ~~4 high → 0 con upgrade Next.js 15.5.14~~ |
 | ~~Resuelto~~ | ~~NotebookLM sync~~ | ~~Funciona como rutina nocturna manual desde Claude Code~~ |
@@ -331,4 +331,4 @@
 - **Sistema de autonomia**: Las tareas de bajo riesgo (posts, schemas, FAQs) se auto-ejecutan. Las de riesgo medio se ejecutan y notifican. Las criticas (nombre, direccion, resenas negativas) esperan aprobacion humana.
 - **Infraestructura**: Supabase (PostgreSQL), Vercel (produccion), GitHub (CI/CD), Resend (emails), Claude API (agentes), Google Places API (datos reales)
 
-**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Next.js 15.5.14. Protocolo A2A completo: AgentCard pública, endpoints para agentes externos, supervisor paralelo (4 grupos, concurrencia 3), white label API con auth `rl_*`, async tasks con polling para evitar timeouts de Vercel. Monitor externo verifica presencia real en Perplexity/Brave/Bing. Onboarding automatizado al pasar a "activo". Landing con admin panel. Pagina /pricing. ⚠️ Pendiente crítico: rotar API keys (breach Vercel 19/04), ejecutar migrations SQL A2A en Supabase, añadir A2A_INTERNAL_SECRET en Vercel.
+**Estado actual**: Desplegado en produccion (https://radar-local.vercel.app). Next.js 15.5.14. Protocolo A2A completo: AgentCard pública, endpoints para agentes externos, supervisor paralelo (4 grupos, concurrencia 3), white label API con auth `rl_*`, async tasks con polling para evitar timeouts de Vercel. Monitor externo verifica presencia real en Perplexity/Brave/Bing. Onboarding automatizado al pasar a "activo". Landing con admin panel. Pagina /pricing. Migrations A2A ejecutadas en Supabase. A2A_INTERNAL_SECRET en Vercel production. ⚠️ Pendientes: re-rotación privada de keys (las actuales pasaron por chat), 3 vulnerabilidades moderate (resend@6.1.3 — breaking change, pospuesto).

@@ -103,6 +103,7 @@ const AGENT_KNOWLEDGE: Record<Agente, KnowledgeFile[]> = {
   generador_reporte: ['map-pack-ranking', 'geo-aeo-fundamentals', 'local-seo-spain'],
   prospector_web:    ['local-seo-spain'],
   supervisor:        [],
+  vigilante_mercado: [],
 }
 
 // ── Tarea específica de cada agente ─────────────────────────
@@ -461,6 +462,8 @@ Responde SOLO en JSON válido:
 }`,
 
   supervisor: `El supervisor no genera prompts directamente — orquesta los demás agentes.`,
+
+  vigilante_mercado: `El vigilante no genera prompts directamente — ejecuta su propio pipeline de scan + análisis.`,
 }
 
 // ── Función pública: construir el USER prompt completo ──────

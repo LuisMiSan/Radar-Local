@@ -619,6 +619,10 @@ export function generateMockResult(agente: Agente, input: AgentInput): AgentResu
       },
       resumen: `Análisis completo de ${nombre} (${dataSource}): 11/11 agentes ejecutados, score ${realScore}/100, 35 tareas generadas.`,
     }),
+    vigilante_mercado: () => ({
+      datos: { cambios_detectados: 0, fuentes_escaneadas: 0 },
+      resumen: 'Vigilante de mercado — ejecución autónoma diaria.',
+    }),
   }
 
   const generator = mockGenerators[agente]

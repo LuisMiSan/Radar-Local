@@ -36,6 +36,7 @@ export type Agente =
   | 'generador_reporte'
   | 'prospector_web'
   | 'supervisor'
+  | 'vigilante_mercado'
 
 // Tabla: clientes
 export interface Cliente {
@@ -304,4 +305,36 @@ export const AGENTE_LABELS: Record<Agente, string> = {
   generador_reporte: 'Generador Reporte',
   prospector_web: 'Prospector Web',
   supervisor: 'Supervisor',
+  vigilante_mercado: 'Vigilante Mercado',
+}
+
+// ── Agente Vigilante ──────────────────────────────────────────
+
+export type ImpactoVigilante = 'critico' | 'importante' | 'info'
+export type TipoCambioVigilante = 'knowledge' | 'prompt' | 'code' | 'config' | 'manual'
+export type EstadoCambio = 'pending' | 'analysed' | 'aprobado' | 'descartado' | 'implementado' | 'pospuesto'
+export type AreaAfectada = 'gbp' | 'llm' | 'stack' | 'negocio' | 'seo' | 'seguridad' | 'general'
+
+export interface DiffPropuesto {
+  file: string        // ruta relativa al proyecto
+  before: string      // contenido actual
+  after: string       // contenido propuesto
+}
+
+export interface CambioDetectado {
+  id: string
+  fuente: string
+  titulo: string
+  url?: string | null
+  resumen: string
+  impacto_estimado: ImpactoVigilante
+  area_afectada: AreaAfectada
+  propuesta?: string | null
+  tipo_cambio: TipoCambioVigilante
+  diff_propuesto?: DiffPropuesto | null
+  estado: EstadoCambio
+  notas_admin?: string | null
+  fecha_deteccion: string
+  fecha_revision?: string | null
+  fecha_implementacion?: string | null
 }

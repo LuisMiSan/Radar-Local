@@ -216,6 +216,7 @@ export const AGENT_SKILLS = {
 `.trim(),
 
   supervisor: '',
+  vigilante_mercado: '',
 }
 
 // ── COMPOSICIÓN: qué skills usa cada agente ─────────────────
@@ -236,6 +237,7 @@ const AGENT_SKILL_MAP: Record<Agente, SkillKey[]> = {
   generador_reporte: ['calcular_puntuacion', 'formato_profesional'],
   prospector_web: ['analizar_nap', 'calcular_puntuacion', 'formato_profesional'],
   supervisor: [],
+  vigilante_mercado: [],
 }
 
 /** Obtiene los skills compartidos asignados a un agente */
