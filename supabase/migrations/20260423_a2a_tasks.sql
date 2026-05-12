@@ -18,6 +18,8 @@ create table if not exists public.a2a_tasks (
 
 alter table public.a2a_tasks enable row level security;
 
+drop policy if exists "Solo service_role puede acceder a a2a_tasks" on public.a2a_tasks;
+
 create policy "Solo service_role puede acceder a a2a_tasks"
   on public.a2a_tasks
   for all

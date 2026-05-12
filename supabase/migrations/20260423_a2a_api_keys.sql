@@ -16,6 +16,8 @@ create table if not exists public.a2a_api_keys (
 -- Solo admins pueden gestionar keys
 alter table public.a2a_api_keys enable row level security;
 
+drop policy if exists "Solo service_role puede leer a2a_api_keys" on public.a2a_api_keys;
+
 create policy "Solo service_role puede leer a2a_api_keys"
   on public.a2a_api_keys
   for all
