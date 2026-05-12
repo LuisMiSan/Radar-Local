@@ -493,7 +493,7 @@ Que los agentes no solo generen "cambia la descripcion a X", sino que la API de 
 - Cuando Google apruebe la cuota, todo funcionara sin cambiar una linea de codigo
 
 **Datos del negocio verificados en GBP:**
-- "IA Division Lab" — C/ Lain Calvo, 27, 28011 Madrid
+- "IA Division Madrid" — C/ Lain Calvo, 27, 28011 Madrid
 - "Radar Local (SEO & GEO para Negocios Locales)" — misma direccion
 
 **Leccion aprendida:**

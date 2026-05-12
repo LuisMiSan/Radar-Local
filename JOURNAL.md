@@ -2,7 +2,7 @@
 
 > Generado y mantenido por Sinapsis
 > Proyecto: Radar Local | Inicio: 2026-03-08
-> Ultima actualizacion: 2026-04-01
+> Ultima actualizacion: 2026-04-25
 
 ## Stack
 
@@ -192,7 +192,7 @@
 - **[STEP]** Base de conocimiento `gemini-voice-search.md` creada y enriquecida con 8 notebooks de NotebookLM
 - **[STEP]** Conexión NotebookLM establecida (94 notebooks accesibles)
 - **[STEP]** Prompts de voz reescritos para los 5 agentes de voz con foco en lenguaje conversacional
-- **[STEP]** Perfil de Bing Places creado para IA Division Lab (visibilidad en ChatGPT/Perplexity)
+- **[STEP]** Perfil de Bing Places creado para IA Division Madrid (visibilidad en ChatGPT/Perplexity)
 - **[DECISION]** Memoria estructurada en Supabase (no RAG/vectores) — más simple, eficiente en tokens
   - *Razon*: Pocos datos por agente, formateo como texto plano en prompt, sin overhead de embeddings
 - **[DECISION]** Knowledge files en .md cargados en memoria y cacheados, asignados por agente
@@ -205,7 +205,7 @@
 - **[STEP]** NotebookLM sync bidireccional: módulo `lib/notebooklm-sync.ts` con push/pull tracking
 - **[STEP]** Tabla `notebooklm_sync` en Supabase para registro de sincronizaciones
 - **[STEP]** API `/api/notebooklm` con endpoints GET (status/preview) y POST (record sync)
-- **[STEP]** Push de 36 contenidos de IA Division Lab a NotebookLM (registrado en Supabase)
+- **[STEP]** Push de 36 contenidos de IA Division Madrid a NotebookLM (registrado en Supabase)
 - **[STEP]** Botón NotebookLM en página Contenido con badge de pendientes y preview panel
 - **[DECISION]** NotebookLM sync manual desde Claude Code (no automatizable)
   - *Razon*: NotebookLM no tiene API pública — solo funciona via MCP en sesión activa de Claude Code
@@ -263,6 +263,39 @@
 - **[DECISION]** Landing config dinamica via tabla `configuracion` (JSON)
   - *Razon*: Permite editar contenido desde admin sin tocar codigo
   - *Alternativas descartadas*: Hardcoded (no editable), CMS externo (dependencia)
+
+### Semana 9 (2026-05-03)
+
+#### 2026-05-03 — Sesión cruzada (no Radar Local)
+- **[CONTEXTO]** Sesión dedicada a auditoría SEO de **iadivisionmadrid.es** (proyecto hermano en Base44, no Radar Local). Doc completo en `C:\Users\USER\audits\iadivisionmadrid\seo-audit-2026-05-03.md`.
+- **[STEP]** Instalado gcloud CLI vía `winget install Google.CloudSDK`. Proyecto GCP `iadiv26-0041ac` con APIs `searchconsole` + `pagespeedonline` habilitadas.
+- **[GOTCHA]** Scripts `toprank/seo-analysis/scripts/*.py` rotos en Windows: `subprocess.run(["gcloud", ...])` no resuelve `gcloud.cmd` (Windows CreateProcess no consulta PATHEXT con shell=False). **Workaround**: llamadas directas a GSC API desde PowerShell con `Invoke-RestMethod` + headers `Authorization: Bearer` y `X-Goog-User-Project`.
+- **[FINDING]** iadivisionmadrid.es invisible en Google: 0 clicks, 0 impressions / 90d. Causa raíz: bug plantilla Base44 con dominio hardcoded `iadivisionmadrid.com` (NXDOMAIN) en canonical + sitemap + LLMs-txt.
+- **[STEP]** Tarea programada `trig_01YYcZUAmm9EXhmjgmo11cDc` para re-auditar el 2026-05-08 10:00 Madrid.
+
+### Semana 8 (2026-04-25)
+
+#### 2026-04-25
+- **[STEP]** Migración notificaciones WhatsApp (CallMeBot) → Telegram Bot API oficial
+  - Motivo: CallMeBot es API no oficial de 2021, sin garantías de seguridad ni continuidad
+  - `lib/vigilante/notifier.ts`: `sendWhatsApp()` reemplazado por `sendTelegram()` via API oficial `api.telegram.org`
+  - Variables añadidas a Vercel: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` via Vercel CLI
+  - Bot: `@radarlocalmadrid_bot` — probado y funcionando con test message
+- **[STEP]** Env vars adicionales añadidas a Vercel producción via CLI: `BRAVE_SEARCH_API_KEY`, `CRON_SECRET`
+- **[STEP]** Fix bug Supervisor: API route `/api/agents/supervisor` aceptaba solo `cliente_id` pero panel de agentes enviaba `clienteId` → añadido fallback: `body.clienteId ?? body.cliente_id`
+- **[STEP]** Dashboard admin: widget Vigilante con banner de alerta condicional (rojo si hay críticos, ámbar si hay pendientes)
+- **[STEP]** Dashboard admin: quick action "Vigilante" actualizado con contador de pendientes en tiempo real
+- **[STEP]** Dashboard admin: texto "11 agentes" corregido a "13 agentes"
+- **[STEP]** 17 SOPs creados en `docs/sops/` cubriendo todos los agentes y categorías del sistema:
+  - SOP-00-general.md (normas globales)
+  - SOP-01-auditor-gbp.md hasta SOP-13-prospector-email.md (un SOP por agente)
+  - SOP-14-pipeline-voz.md, SOP-15-pipeline-seo.md, SOP-16-vigilante-mercado.md
+- **[STEP]** Fix vulnerabilidad postcss: actualizado de 8.4.x a ^8.5.10 como dependencia directa en devDependencies
+- **[DECISION]** Mantener Vercel (no migrar a VPS Contabo por ahora)
+  - *Razon*: Migración requiere PM2 + Nginx + Certbot + GitHub Actions + crontab para Vigilante — demasiado esfuerzo sin primer cliente pagador
+  - *Alternativas descartadas*: VPS Hostinger/Contabo (se retoma cuando haya primer cliente)
+- **[GOTCHA]** `npm audit fix` no puede arreglar `next/node_modules/postcss@8.4.31` — es copia interna privada de Next.js 15, requeriría downgrade a Next 9 (breaking). Sin solución hasta que Next.js lo actualice.
+- **[DONE]** Ejecutar `20260424_vigilante.sql` en Supabase SQL Editor — tabla `cambios_detectados` confirmada en producción (2026-05-01)
 
 ### Semana 7 (2026-04-23 → 2026-04-24)
 
