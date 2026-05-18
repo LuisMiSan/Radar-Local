@@ -264,6 +264,47 @@
   - *Razon*: Permite editar contenido desde admin sin tocar codigo
   - *Alternativas descartadas*: Hardcoded (no editable), CMS externo (dependencia)
 
+### Semana 11 (2026-05-12 → 2026-05-19)
+
+#### 2026-05-12 — Pendientes A2A resueltos + Dependabot
+- **[STEP]** Limpieza repo: descartado `CLAUDE.md` contaminado con instrucciones del plugin Toprank (residuo de sesión SEO iadivisionmadrid.es). Carpeta `geo-radar-local-system/` movida a `C:\Users\USER\skills\geo-radar-local\` (paquete distribuible no debe vivir en repo de instalación).
+- **[STEP]** Pipeline GEO de 4 agentes commiteado: `.claude/agents/{geo-analyzer,geo-ranker,geo-rewriter,geo-indexer}.md` + `.claude/commands/{geo,geo-aux}.md`.
+- **[STEP]** Migrations A2A ejecutadas en Supabase: `20260423_a2a_api_keys.sql` y `20260423_a2a_tasks.sql`. Hechas idempotentes con `DROP POLICY IF EXISTS`.
+- **[STEP]** `A2A_INTERNAL_SECRET` generado (32 bytes hex) y añadido en `.env.local` + Vercel production.
+- **[STEP]** Vulnerabilidades npm: bump `jspdf ^4.2.0 → ^4.2.1` (fixea critical + high). Overrides añadidos para transitive deps: `rollup`, `minimatch`, `picomatch`, `path-to-regexp`, `dompurify`, `vite`, `brace-expansion`. Lock regenerado.
+- **[GOTCHA]** Dependabot tarda mucho en rescanear (>24h en este caso). Las 19 alertas listadas seguían siendo del 22-abr aunque el lock ya estaba actualizado. Verificación real: `npm audit` local + grep en `package-lock.json` confirma versiones parcheadas.
+- **[GOTCHA]** `npm overrides` rechaza overridear una dependencia directa (jspdf). Solución: bump directo en `dependencies`, no en overrides.
+
+#### 2026-05-19 — Rotación privada de las 7 keys que pasaron por chat
+- **[CONTEXTO]** Sesiones previas (post-breach Vercel 19-abr) tuvieron rotaciones donde los valores nuevos de varias keys se expusieron en el chat con Claude. Hoy se completa el ciclo: rotar otra vez TODAS, esta vez sin que el valor toque conversación.
+- **[STEP]** Protocolo HITL (Human-in-the-Loop):
+  - Keys de proveedor (Supabase, Anthropic, Resend, Google OAuth, Google Places): usuario genera nueva en panel del proveedor, edita `.env.local` localmente, actualiza Vercel **via web** (no CLI) marcándolas como Sensitive ✅.
+  - Secrets locales (`A2A_INTERNAL_SECRET`, `PORTAL_SECRET`): generados por Claude con `crypto.randomBytes(32).toString('hex')`, escritos directamente a disco vía `sed -i`, luego `printf | npx vercel env add` con stdin pipe (nunca stdout).
+- **[STEP]** 7/7 keys rotadas correctamente, todas verificadas con prod 200 OK tras redeploy automático:
+  1. `SUPABASE_SERVICE_ROLE_KEY` (v3 tras 2 intentos — la v2 se quemó por bug CLI Vercel que concatenó "production" + valor pegado en error message)
+  2. `RADAR_ANTHROPIC_KEY` → v2
+  3. `A2A_INTERNAL_SECRET` → v2 (frescamente rotada, antes se había generado y leakeado por system-reminder)
+  4. `PORTAL_SECRET` → v2 (invalida todos los tokens de portal de clientes existentes — sin impacto porque no hay portales activos en producción)
+  5. `RESEND_API_KEY` → v2
+  6. `GOOGLE_PLACES_API_KEY` → `radar-local-places-v2` (con restricción a Places API + Places API New + Geocoding)
+  7. `GOOGLE_CLIENT_SECRET` → terminando en `cEoc` (creado 19-may, manteniendo el client_id `539522133480-kls9...`)
+- **[GOTCHA]** `npx vercel env add` en PowerShell tiene un bug que concatena el argumento `production` con el valor cuando hay error de paste mezclado con el prompt interactivo. Workaround definitivo: usar el dashboard web de Vercel (Edit en env vars), evita pegado en CLI y permite marcar Sensitive con UI clara.
+- **[GOTCHA]** Las credenciales de Google (Places + OAuth Client) viven en el proyecto GCP `radar-local-491000`, no en `iadiv26-0041ac` (el de GSC). Distinguir: el prefijo `539522133480-` del `GOOGLE_CLIENT_ID` corresponde al project number de `radar-local-491000`.
+- **[DECISION]** Para rotar GOOGLE_CLIENT_SECRET se usó la estrategia A (añadir segundo secret al mismo OAuth client) en lugar de B (crear nuevo OAuth client desde cero). Razón: mantiene client_id, redirect URIs y scopes ya configurados.
+- **[PENDIENTE-USUARIO]** Inhabilitar/borrar secret viejo OAuth `****BJcS` en Google Cloud Console (esperar 24-48h tras Inhabilitar para poder eliminar). Limpiar también keys huérfanas: "Nuevo Maps Platform API Key" + "Nuevo Browser key (auto created by Firebase)" del 24-abr si no se usan.
+
+### Semana 10 (2026-05-10)
+
+#### 2026-05-10 — Resultados SEO iadivisionmadrid.es (proyecto hermano)
+- **[FINDING]** Tras aplicar los fixes SEO del 3-may en Base44 (canonical, sitemap, title, meta description, OG tags, JSON-LD email), GSC reporta:
+  - Impressions 7d: 115 (vs 0 antes)
+  - Avg position: 13.0
+  - googleCanonical = userCanonical = `https://iadivisionmadrid.es/` (problema del `.com` inexistente totalmente resuelto)
+  - Última crawl Google: HOY 10-may 17:19 UTC (vs 2026-01-05 antes, 109 días sin crawl)
+  - Top queries: "agencia ia madrid" pos 13.9 / 49 imp · "agencia de ia en madrid" pos 5.7 / 7 imp · "desarrollo agente ia ecommerce" pos 3.0 / 1 imp
+- **[STEP]** Re-indexación manual solicitada en GSC para las 5 URLs (/, /about, /contact, /blog, /el-lab).
+- **[STEP]** Tarea programada `trig_*` (Round 2 audit) creada para 2026-05-24 — fallida por auth expirada en API. Pendiente recrear cuando se vuelva a la sesión interactiva.
+
 ### Semana 9 (2026-05-03)
 
 #### 2026-05-03 — Sesión cruzada (no Radar Local)
