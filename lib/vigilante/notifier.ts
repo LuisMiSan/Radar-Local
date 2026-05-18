@@ -100,7 +100,10 @@ export async function sendVigilanteEmail(
 //           https://api.telegram.org/bot{TOKEN}/getUpdates → copia chat.id
 //        3) Añade TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en Vercel env vars
 
-export async function sendTelegram(cambios: CambioAnalizado[]): Promise<void> {
+export async function sendTelegram(
+  cambios: CambioAnalizado[],
+  fecha?: string
+): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN
   const chatId = process.env.TELEGRAM_CHAT_ID
 
@@ -114,8 +117,15 @@ export async function sendTelegram(cambios: CambioAnalizado[]): Promise<void> {
 
   if (!criticos.length && !importantes.length) return
 
+  // Si no se pasa fecha, generar timestamp actual en Madrid
+  const timestamp = fecha ?? new Date().toLocaleString('es-ES', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: 'Europe/Madrid',
+  })
+
   const lineas = [
-    `🛡️ *Radar Vigilante*`,
+    `🛡️ *Radar Vigilante* — ${timestamp}`,
     criticos.length
       ? `🔴 *${criticos.length} crítico(s):*\n${criticos.map((c) => `  • ${c.titulo}`).join('\n')}`
       : '',

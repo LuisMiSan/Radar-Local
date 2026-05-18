@@ -38,7 +38,18 @@ export async function POST(req: Request) {
 async function runVigilante() {
   const startTime = Date.now()
   const supabase = getSupabaseAdmin()
-  const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  // Fecha + hora en zona horaria Madrid (Europe/Madrid)
+  // Formato: "19/05/2026 14:32"
+  const ahora = new Date()
+  const fecha = ahora.toLocaleString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Europe/Madrid',
+  })
 
   try {
     // 1. Escanear fuentes
@@ -88,7 +99,7 @@ async function runVigilante() {
     if (nuevos.length > 0) {
       await Promise.allSettled([
         sendVigilanteEmail(nuevos, fecha),
-        sendTelegram(nuevos),
+        sendTelegram(nuevos, fecha),
       ])
     }
 
