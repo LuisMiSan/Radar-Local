@@ -39,6 +39,7 @@ export interface ResumenAgente {
   avg_output_tokens: number
   coste_total: number
   coste_promedio: number
+  ultima_ejecucion?: string | null
 }
 
 // Registrar un gasto de API
@@ -154,14 +155,14 @@ export async function getResumenPorAgente(): Promise<ResumenAgente[]> {
 
   const { data, error } = await supabaseAdmin
     .from('uso_api')
-    .select('agente, input_tokens, output_tokens, coste_total')
+    .select('agente, input_tokens, output_tokens, coste_total, created_at')
 
   if (error) {
     console.error('[gastos] Error consultando uso_api por agente:', error.message)
     return []
   }
 
-  const porAgente = new Map<string, { calls: number; inT: number; outT: number; coste: number }>()
+  const porAgente = new Map<string, { calls: number; inT: number; outT: number; coste: number; ultima: string | null }>()
   for (const row of data ?? []) {
     const existing = porAgente.get(row.agente)
     if (existing) {
@@ -169,12 +170,16 @@ export async function getResumenPorAgente(): Promise<ResumenAgente[]> {
       existing.inT += row.input_tokens
       existing.outT += row.output_tokens
       existing.coste += Number(row.coste_total)
+      if (row.created_at && (!existing.ultima || row.created_at > existing.ultima)) {
+        existing.ultima = row.created_at
+      }
     } else {
       porAgente.set(row.agente, {
         calls: 1,
         inT: row.input_tokens,
         outT: row.output_tokens,
         coste: Number(row.coste_total),
+        ultima: row.created_at ?? null,
       })
     }
   }
@@ -190,6 +195,7 @@ export async function getResumenPorAgente(): Promise<ResumenAgente[]> {
       avg_output_tokens: Math.round(v.outT / v.calls),
       coste_total: v.coste,
       coste_promedio: v.coste / v.calls,
+      ultima_ejecucion: v.ultima,
     })
   })
 
